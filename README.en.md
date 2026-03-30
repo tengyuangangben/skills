@@ -21,7 +21,32 @@ Each skill is maintained in its own folder with an independent `README.md`.
 
 | Skill | Summary | Install/Usage |
 |---|---|---|
-| `wps-airscript-agent` | Generic WPS multi-dimensional table integration (create/query/attachments/aggregation) | See `wps-airscript-agent/README.md` |
+| `wps-airscript-agent` | Generic WPS multi-dimensional table integration (create/query/attachments/aggregation) | See `wps-airscript-agent/README.md` (includes OpenClaw install) |
+
+## Agent Installation (Repository-Level)
+
+### Option A: Clone full skills repository
+
+```bash
+git clone https://github.com/tengyuangangben/skills.git
+```
+
+Then copy the target skill folder (for example `wps-airscript-agent/`) into your agent's skills directory.
+
+### Option B: Install a single skill via npx
+
+```bash
+npx degit tengyuangangben/skills/wps-airscript-agent ./wps-airscript-agent
+```
+
+If your agent supports local-folder skill installation, point it to `./wps-airscript-agent`.
+
+### OpenClaw Reference
+
+1. Get `wps-airscript-agent` using Option A or B.
+2. Place it under OpenClaw skills folder, for example: `<OPENCLAW_HOME>/skills/wps-airscript-agent`.
+3. Restart OpenClaw or reload skills.
+4. Enable and invoke the skill inside OpenClaw.
 
 ## Adding a New Skill
 

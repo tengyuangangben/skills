@@ -7,6 +7,34 @@
 - 条件查询（contains / 数字范围 / 聚合）
 - 动态提交人、动态提交渠道
 
+## 给 Agent 的安装指引（重点）
+
+该目录本身就是一个可安装 Skill 包。  
+Agent（如 OpenClaw）需要的是这个目录里的 `SKILL.md` 与脚本文件，而不是仅复制单个文件。
+
+### 安装方式 1：从 skills 仓库克隆
+
+```bash
+git clone https://github.com/tengyuangangben/skills.git
+```
+
+将 `skills/wps-airscript-agent` 目录拷贝到你的 Agent 技能目录。
+
+### 安装方式 2：仅下载本 Skill（npx）
+
+```bash
+npx degit tengyuangangben/skills/wps-airscript-agent ./wps-airscript-agent
+```
+
+将下载后的 `./wps-airscript-agent` 放入 Agent 技能目录即可。
+
+### OpenClaw 参考安装步骤
+
+1. 获取 `wps-airscript-agent` 目录（用上面任一方式）。
+2. 放置到 OpenClaw 技能目录，例如：`<OPENCLAW_HOME>/skills/wps-airscript-agent`。
+3. 重启 OpenClaw 或执行技能重载。
+4. 在 OpenClaw 中启用并调用该 Skill。
+
 ## 目录说明
 
 - `SKILL.md`：Skill 规范与行为约定
@@ -30,6 +58,15 @@
 5. 运行健康检查与字段发现：
    - `WPS_SKILL_MODE=setup`
    - `WPS_SKILL_MODE=fields`
+
+### 环境变量示例（PowerShell）
+
+```powershell
+$env:WPS_AIRSCRIPT_TOKEN="你的脚本令牌"
+$env:WPS_WEBHOOK_MAP_PATH="D:\path\to\wps_webhook_map.json"
+$env:WPS_SUBMITTER="agent_user"
+$env:WPS_SUBMIT_CHANNEL="telegram"
+```
 
 ## 常用调用
 
