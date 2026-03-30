@@ -76,6 +76,31 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 
 详细参数与示例请查看 `docs/安装与调用说明.md`。
 
+## 附件字段入参规范（OpenClaw 推荐）
+
+为避免 WPS 里附件出现灰色问号，建议优先传“带后缀文件名 + 正确数据格式”：
+
+```json
+{
+  "相关资料附件": {
+    "file_data": "<base64字符串或data URI>",
+    "file_name": "示例.pdf"
+  }
+}
+```
+
+也支持以下形式：
+
+- 本地路径：`{"file_path":"D:\\a\\b\\c.pdf"}`
+- 多文件：`{"file_paths":["D:\\a.png","D:\\b.pdf"]}`
+- 远程URL：`{"file_url":"https://example.com/a.pdf","file_name":"a.pdf"}`
+- 列表混合：`{"files":[{"file_url":"..."},{"file_path":"..."}]}`
+
+注意：
+
+- `file_name` 建议带扩展名（如 `.pdf` / `.png`）。
+- 若传入纯 base64（不含 `data:mime;base64,` 前缀），路由会按 `file_name` 推断 MIME 并自动补全。
+
 ## 安全说明
 
 - 不要提交真实 token、真实 webhook、个人本地绝对路径。

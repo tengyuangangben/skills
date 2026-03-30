@@ -121,21 +121,79 @@ def build_fields_payload(field_config: List[Dict[str, Any]], user_data: Dict[str
         data = base64.b64encode(path.read_bytes()).decode("utf-8")
         return f"data:{mime_type};base64,{data}"
 
-    def normalize_attachment_input(value: Any) -> List[str]:
+    def parse_mime_from_data_uri(data_uri: str) -> str:
+        if not data_uri.lower().startswith("data:"):
+            return "application/octet-stream"
+        head = data_uri.split(",", 1)[0]
+        mime = head[5:].split(";", 1)[0].strip()
+        return mime or "application/octet-stream"
+
+    def ensure_data_uri(raw_data: str, file_name: str = "") -> str:
+        text = raw_data.strip()
+        if text.lower().startswith("data:"):
+            return text
+        mime_type, _ = mimetypes.guess_type(file_name)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+        return f"data:{mime_type};base64,{text}"
+
+    def filename_from_data_uri(data_uri: str, fallback: str) -> str:
+        mime = parse_mime_from_data_uri(data_uri)
+        ext = mimetypes.guess_extension(mime) or ""
+        name = (fallback or "附件").strip()
+        if "." not in Path(name).name and ext:
+            return f"{name}{ext}"
+        return name
+
+    def download_url_to_data_uri(url: str) -> tuple[str, str]:
+        resp = requests.get(url, timeout=60)
+        resp.raise_for_status()
+        mime_type = resp.headers.get("Content-Type", "").split(";", 1)[0].strip() or "application/octet-stream"
+        file_name = Path(url.split("?", 1)[0]).name or "附件"
+        data = base64.b64encode(resp.content).decode("utf-8")
+        return f"data:{mime_type};base64,{data}", file_name
+
+    def normalize_attachment_input(value: Any) -> List[Dict[str, str]]:
+        out: List[Dict[str, str]] = []
+
+        def append_item(kind: str, payload: str, file_name: str = "") -> None:
+            if payload:
+                out.append({"kind": kind, "payload": payload, "file_name": file_name})
+
         if isinstance(value, str):
-            if value.strip().lower().startswith("data:"):
-                return [value.strip()]
-            return [value]
+            text = value.strip()
+            if text.lower().startswith("http://") or text.lower().startswith("https://"):
+                append_item("url", text, "")
+            elif text.lower().startswith("data:"):
+                append_item("data", text, "")
+            else:
+                append_item("path", text, "")
+            return out
+
         if isinstance(value, dict):
+            if isinstance(value.get("files"), list):
+                for item in value.get("files", []):
+                    out.extend(normalize_attachment_input(item))
+                return out
+            file_name = str(value.get("file_name", "")).strip()
             if value.get("file_data"):
-                return [str(value.get("file_data"))]
-            if value.get("file_path"):
-                return [str(value.get("file_path"))]
-            if value.get("file_paths") and isinstance(value.get("file_paths"), list):
-                return [str(x) for x in value.get("file_paths")]
+                append_item("data", str(value.get("file_data")), file_name)
+            elif value.get("file_base64"):
+                append_item("data", str(value.get("file_base64")), file_name)
+            elif value.get("file_url"):
+                append_item("url", str(value.get("file_url")), file_name)
+            elif value.get("file_path"):
+                append_item("path", str(value.get("file_path")), file_name)
+            elif value.get("file_paths") and isinstance(value.get("file_paths"), list):
+                for p in value.get("file_paths", []):
+                    append_item("path", str(p), "")
+            return out
+
         if isinstance(value, list):
-            return [str(x) for x in value]
-        return []
+            for item in value:
+                out.extend(normalize_attachment_input(item))
+            return out
+        return out
 
     one_record: List[Dict[str, Any]] = []
     config_by_name = {get_field_name(item): item for item in field_config if get_field_name(item)}
@@ -153,15 +211,24 @@ def build_fields_payload(field_config: List[Dict[str, Any]], user_data: Dict[str
             if attachments:
                 file_data_list: List[str] = []
                 file_name_list: List[str] = []
-                for idx, raw in enumerate(attachments):
-                    raw = raw.strip()
-                    if raw.lower().startswith("data:"):
-                        file_data_list.append(raw)
-                        file_name_list.append(f"附件{idx + 1}")
+                for idx, item_data in enumerate(attachments):
+                    kind = item_data.get("kind", "")
+                    payload = item_data.get("payload", "").strip()
+                    hint_name = item_data.get("file_name", "").strip()
+                    if not payload:
+                        continue
+                    if kind == "path":
+                        path = Path(payload)
+                        file_data = file_to_data_uri(payload)
+                        file_name = hint_name or path.name
+                    elif kind == "url":
+                        file_data, url_name = download_url_to_data_uri(payload)
+                        file_name = hint_name or url_name
                     else:
-                        path = Path(raw)
-                        file_data_list.append(file_to_data_uri(raw))
-                        file_name_list.append(path.name)
+                        file_data = ensure_data_uri(payload, hint_name)
+                        file_name = hint_name or filename_from_data_uri(file_data, f"附件{idx + 1}")
+                    file_data_list.append(file_data)
+                    file_name_list.append(file_name)
                 item["value"] = ""
                 item["file_base64"] = "|||".join(file_data_list)
                 item["file_name"] = "|||".join(file_name_list)
