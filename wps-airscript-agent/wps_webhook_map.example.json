@@ -1,0 +1,36 @@
+{
+  "routes": [
+    {
+      "key": "reimbursement",
+      "name": "报销登记",
+      "sheet_name": "请替换为报销表名称",
+      "aliases": ["报销", "报销登记", "报销表", "日记账"],
+      "write_webhook": "请替换为报销录入脚本Webhook",
+      "query_webhook": "请替换为报销查询脚本Webhook",
+      "field_query_webhook": "请替换为报销字段查询脚本Webhook",
+      "field_query_args": {},
+      "default_notification_mode": "text",
+      "default_range_mode": "all",
+      "range_filter_fields": {
+        "user_field_name": "_提交人",
+        "group_field_name": "_提交渠道"
+      }
+    },
+    {
+      "key": "employee_roster",
+      "name": "人员花名册",
+      "sheet_name": "请替换为花名册表名称",
+      "aliases": ["花名册", "人员", "员工", "通讯录"],
+      "write_webhook": "请替换为花名册录入脚本Webhook",
+      "query_webhook": "请替换为花名册查询脚本Webhook",
+      "field_query_webhook": "请替换为花名册字段查询脚本Webhook",
+      "field_query_args": {},
+      "default_notification_mode": "text",
+      "default_range_mode": "all",
+      "range_filter_fields": {
+        "user_field_name": "_提交人",
+        "group_field_name": "_提交渠道"
+      }
+    }
+  ]
+}

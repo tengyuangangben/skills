@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+
+# 本地敏感配置（真实 webhook）
+wps_webhook_map.json
+
+# 可选：本地环境文件
+.env
