@@ -385,6 +385,93 @@ def build_fields_payload(field_config: List[Dict[str, Any]], user_data: Dict[str
     return [one_record]
 
 
+def _pick_field_attr(obj: Dict[str, Any], keys: List[str], default: Any = None) -> Any:
+    for k in keys:
+        if k in obj and obj.get(k) is not None:
+            return obj.get(k)
+    return default
+
+
+def _bool_from_any(v: Any) -> bool:
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    s = str(v).strip().lower()
+    return s in ("1", "true", "yes", "y", "是")
+
+
+def _extract_select_options(items: Any) -> List[str]:
+    out: List[str] = []
+    if not isinstance(items, list):
+        return out
+    for item in items:
+        if isinstance(item, dict):
+            name = str(item.get("name") or item.get("Name") or item.get("text") or item.get("value") or "").strip()
+            if name:
+                out.append(name)
+        else:
+            text = str(item).strip()
+            if text:
+                out.append(text)
+    return out
+
+
+def _split_multi_select_value(v: Any) -> List[str]:
+    if isinstance(v, list):
+        return [str(x).strip() for x in v if str(x).strip()]
+    text = str(v or "").strip()
+    if not text:
+        return []
+    for sep in ("|||", "、", ",", "，", "|", ";", "；", "\n"):
+        if sep in text:
+            return [x.strip() for x in text.split(sep) if x.strip()]
+    return [text]
+
+
+def _validate_user_data(field_config: List[Dict[str, Any]], user_data: Dict[str, Any], enforce_required: bool = True) -> None:
+    cfg_by_name: Dict[str, Dict[str, Any]] = {}
+    for cfg in field_config:
+        name = str(_pick_field_attr(cfg, ["name", "Name"], "")).strip()
+        if name:
+            cfg_by_name[name] = cfg
+
+    unknown_fields = [k for k in (user_data or {}).keys() if k not in cfg_by_name]
+    if unknown_fields:
+        raise ValueError(f"存在未识别字段: {unknown_fields}。请先用 fields 查看可用字段后重试。")
+
+    for field_name, value in (user_data or {}).items():
+        cfg = cfg_by_name.get(field_name, {})
+        field_type = str(_pick_field_attr(cfg, ["type", "Type"], "")).strip()
+        options = _extract_select_options(_pick_field_attr(cfg, ["items", "Items"], []))
+        if field_type in ("SingleSelect", "单选") and options and str(value).strip():
+            if str(value).strip() not in options:
+                raise ValueError(f"字段[{field_name}]为单选，值[{value}]不在可选项中: {options}")
+        if field_type in ("MultipleSelect", "多选") and options:
+            values = _split_multi_select_value(value)
+            invalid = [x for x in values if x not in options]
+            if invalid:
+                raise ValueError(f"字段[{field_name}]为多选，值{invalid}不在可选项中: {options}")
+
+    if not enforce_required:
+        return
+    auto_types = {"CreateTime", "CreatedBy", "AutoNumber", "Formula", "Lookup"}
+    missing_required: List[str] = []
+    for cfg in field_config:
+        name = str(_pick_field_attr(cfg, ["name", "Name"], "")).strip()
+        if not name:
+            continue
+        required = _bool_from_any(_pick_field_attr(cfg, ["required", "Required"], False))
+        field_type = str(_pick_field_attr(cfg, ["type", "Type"], "")).strip()
+        if not required or field_type in auto_types:
+            continue
+        v = (user_data or {}).get(name)
+        if v is None or str(v).strip() == "":
+            missing_required.append(name)
+    if missing_required:
+        raise ValueError(f"缺少必填字段: {missing_required}")
+
+
 def create_record(
     intent: str,
     user_data: Dict[str, Any],
@@ -411,6 +498,7 @@ def create_record(
                     ordered_data[k] = v
             payload_data = ordered_data
     field_config = get_fields_config(route, token)
+    _validate_user_data(field_config, payload_data, enforce_required=not overwrite_mode)
     fields = build_fields_payload(field_config, payload_data)
     actual_submitter, actual_submit_channel = _resolve_submit_meta(submitter, submit_channel, payload_data, route)
     argv = {
