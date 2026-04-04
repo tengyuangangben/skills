@@ -45,6 +45,14 @@
    - 先调用 setup 获取 routes
    - 用 aliases/name/key 二次匹配后再执行
 
+5. 字段新增控制（严格）：
+   - 默认禁止新增业务字段：
+     - `WPS_ALLOW_NEW_FIELDS=false`
+   - 仅当用户明确表达“请新增字段XXX”时，才允许开启：
+     - `WPS_ALLOW_NEW_FIELDS=true`
+     - `WPS_NEW_FIELDS_WHITELIST=XXX`（可多个，逗号分隔）
+   - 若用户未明确授权新增字段，字段不存在时应报错并提示，不得自动创建。
+
 ## 三、低 Token 约束
 
 1. 禁止把大段 base64 文件正文拼接进对话上下文。
@@ -74,3 +82,6 @@
    - 立即走 `update_attachment` 补传，不重复新增。
 2. 如果 update_attachment 未命中键值：
    - 提示用户确认唯一键值后重试，不盲目新增。
+3. 如果写入失败且提示“字段不存在且不允许自动创建”：
+   - 先询问用户是否同意新增该字段。
+   - 用户同意后再设置 `WPS_ALLOW_NEW_FIELDS=true` 并限定白名单重试。
