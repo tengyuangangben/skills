@@ -54,6 +54,15 @@ If your agent supports local-folder skill installation, point it to `./wps-airsc
 3. Restart OpenClaw or reload skills.
 4. Enable and invoke the skill inside OpenClaw.
 
+## Upgrade Path
+
+- From `v1.0.0`: upgrade to `v1.1.0`, then to `v1.1.1`
+- From `v1.1.0`: upgrade directly to `v1.1.1`
+- After upgrading:
+  - republish WPS-side `录入脚本.js`
+  - run `setup` once for health checks
+  - review migration notes in `wps-airscript-agent/README.md`
+
 ## Adding a New Skill
 
 1. Create a new folder at repository root (for example: `new-skill/`).
