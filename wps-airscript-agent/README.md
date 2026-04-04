@@ -195,6 +195,10 @@ python ".\scripts\wps_skill_router.py"
   - `WPS_QUERY_OUTPUT_FORMAT=text`
 - 当路由不明确时，先调用 `setup` 并根据 `routes` 做二次匹配，不要直接放弃。
 
+可直接使用模板文件：
+
+- `docs/OpenClaw_自动调用策略模板.md`
+
 ## 安全说明
 
 - 不要提交真实 token、真实 webhook、个人本地绝对路径。

@@ -34,7 +34,7 @@
 
 | Skill | 简介 | 安装/使用 |
 |---|---|---|
-| `wps-airscript-agent` | WPS 多维表通用录入与查询（含附件、条件查询、聚合） | 见 `wps-airscript-agent/README.md`（含 OpenClaw 安装） |
+| `wps-airscript-agent` | WPS 多维表通用录入与查询（含附件、条件查询、聚合） | 见 `wps-airscript-agent/README.md`（含 OpenClaw 安装与自动调用模板） |
 
 ## Agent 安装方式（仓库级）
 
