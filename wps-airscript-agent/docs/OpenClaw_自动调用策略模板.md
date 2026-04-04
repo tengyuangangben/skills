@@ -46,7 +46,16 @@
    - 多消息补附件场景强制：
      - `WPS_UPDATE_ATTACHMENT_MODE=append`
 
-4. 用户意图为“删除/撤销”：
+4. 用户意图为“修改/更新已有记录字段（非附件）”：
+   - 调用 `update`
+   - 必须提供：
+     - `WPS_UPDATE_KEY_FIELD`
+     - `WPS_UPDATE_KEY_VALUE`
+     - `WPS_UPDATE_FIELDS_JSON`
+   - 默认要求记录必须存在：
+     - `WPS_UPDATE_MUST_EXIST=true`
+
+5. 用户意图为“删除/撤销”：
    - 调用 `delete`
    - 条件删除至少提供：
      - `WPS_DELETE_FIELD`
@@ -54,11 +63,11 @@
    - 撤销当次录入优先提供：
      - `WPS_DELETE_REQUEST_ID`
 
-5. 路由不明确：
+6. 路由不明确：
    - 先调用 setup 获取 routes
    - 用 aliases/name/key 二次匹配后再执行
 
-6. 字段新增控制（严格）：
+7. 字段新增控制（严格）：
    - 默认禁止新增业务字段：
      - `WPS_ALLOW_NEW_FIELDS=false`
    - 仅当用户明确表达“请新增字段XXX”时，才允许开启：
