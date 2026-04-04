@@ -7,6 +7,25 @@
 - 条件查询（contains / 数字范围 / 聚合）
 - 动态提交人、动态提交渠道
 
+## 版本信息
+
+- 当前版本：`v1.1.0`
+- Release：`https://github.com/tengyuangangben/skills/releases/tag/v1.1.0`
+
+## 从 v1.0.0 升级到 v1.1.0
+
+1. 更新 Skill 目录下文件（重点是 `scripts/wps_skill_router.py` 与 `scripts/录入脚本.js`）。
+2. 将新版 `录入脚本.js` 重新发布到 WPS 多维表脚本端。
+3. 保持原有环境变量不变即可运行；如需排障日志可设置：
+   - `WPS_KEEP_AIRSCRIPT_LOGS=true`
+
+升级收益：
+
+- 默认裁剪执行日志，减少 token 消耗。
+- 查询优先单次返回，减少多次 webhook 调用。
+- 附件上传兼容性更强（避免灰色问号）。
+- 新增 `update_attachment`，支持已存在记录补传附件。
+
 ## 给 Agent 的安装指引（重点）
 
 该目录本身就是一个可安装 Skill 包。  
