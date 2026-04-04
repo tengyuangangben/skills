@@ -89,6 +89,7 @@ npx degit tengyuangangben/skills/wps-airscript-agent ./wps-airscript-agent
 - `scripts/录入脚本.js`：WPS 端录入脚本
 - `scripts/查询脚本.js`：WPS 端查询脚本
 - `scripts/字段配置查询脚本.js`：WPS 端字段发现脚本
+- `scripts/删除脚本.js`：WPS 端删除脚本
 - `wps_webhook_map.example.json`：公开配置模板（脱敏）
 - `docs/安装与调用说明.md`：完整安装与调用文档
 
@@ -98,6 +99,7 @@ npx degit tengyuangangben/skills/wps-airscript-agent ./wps-airscript-agent
 2. 从脚本详情页复制 token 与 webhook。
 3. 复制模板配置并填写真实 webhook：
    - `Copy-Item wps_webhook_map.example.json wps_webhook_map.json`
+   - 可选在配置顶层填写 `token`（优先于环境变量）
 4. 设置环境变量：
    - 可选：`WPS_AIRSCRIPT_TOKEN`（当 `wps_webhook_map.json` 未配置 `token` 时使用）
    - 可选：`WPS_WEBHOOK_MAP_PATH`、`WPS_SUBMITTER`、`WPS_SUBMIT_CHANNEL`
