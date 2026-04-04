@@ -358,6 +358,8 @@ def create_record(
         "request_type": "content",
         "full_input_mode": False,
         "overwrite_mode": "是" if overwrite_mode else "否",
+        "allow_new_fields": "是" if _parse_bool(os.getenv("WPS_ALLOW_NEW_FIELDS", "false"), False) else "否",
+        "new_fields_whitelist": [x.strip() for x in os.getenv("WPS_NEW_FIELDS_WHITELIST", "").split(",") if x.strip()],
         "submitter": actual_submitter,
         "submit_channel": actual_submit_channel,
         "request_id": f"{route.get('key')}-{os.urandom(4).hex()}",

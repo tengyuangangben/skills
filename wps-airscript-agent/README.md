@@ -215,3 +215,15 @@ python ".\scripts\wps_skill_router.py"
 
 - 不要提交真实 token、真实 webhook、个人本地绝对路径。
 - 公开仓库仅保留 `wps_webhook_map.example.json`。
+
+## 字段写入约束（重要）
+
+- 录入时仅允许按目标表**已有字段**写入。
+- 仅以下系统字段允许自动创建：
+  - `_请求ID`
+  - `_提交人`
+  - `_提交渠道`
+- 其余不存在字段会直接返回失败，不会自动新增，避免污染表结构。
+- 如用户明确要求“新增字段”时，可显式开启：
+  - `WPS_ALLOW_NEW_FIELDS=true`
+  - `WPS_NEW_FIELDS_WHITELIST=字段A,字段B`

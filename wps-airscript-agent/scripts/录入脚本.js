@@ -23,6 +23,10 @@ const submitterFieldName = '_提交人';
 const submitChannelFieldName = '_提交渠道';
 const requestIdFieldName = "_请求ID";
 const originalAttackmentFieldName = "_原始附件";
+const autoCreatableSystemFields = [requestIdFieldName, submitterFieldName, submitChannelFieldName];
+function canAutoCreateField(fieldName) {
+  return autoCreatableSystemFields.indexOf(fieldName) >= 0
+}
 const row_fields_data = Context.argv.fields;
 
 const table_type = Context.argv.table_type;
@@ -50,6 +54,19 @@ const submit_channel = Context.argv.submit_channel || Context.argv.chatroom_id |
 const request_id = Context.argv.request_id || Context.argv.msg_id || ""
 const file_base64 = Context.argv.file_base64
 const full_input_mode = Context.argv.full_input_mode // 全部录入模式标志
+const allow_new_fields = Context.argv.allow_new_fields
+const new_fields_whitelist = Array.isArray(Context.argv.new_fields_whitelist) ? Context.argv.new_fields_whitelist : []
+function isTrueValue(v) {
+  if (v === true) return true
+  if (v === false || v == null) return false
+  const s = String(v).trim().toLowerCase()
+  return s == "1" || s == "true" || s == "yes" || s == "y" || s == "是"
+}
+function canCreateBusinessField(fieldName) {
+  if (!isTrueValue(allow_new_fields)) return false
+  if (!Array.isArray(new_fields_whitelist) || new_fields_whitelist.length == 0) return true
+  return new_fields_whitelist.includes(fieldName)
+}
 if (request_type == "delete_record") {
   let sht = shtType != "d" ? Application.Sheets(shtName) : getShtWithName(shtName);
   if (shtType != "d") {
@@ -247,10 +264,8 @@ else {
     // 如果检测字段名称为空，跳过字段创建和检测逻辑
     if (monitor_field_name && monitor_field_name.trim() !== "") {
       let fld = getFieldWithName(sht, monitor_field_name);
-
       if (!fld) {
-
-        createFiled(sht, monitor_field_name);
+        return { "respData": `录入失败：字段不存在 ${monitor_field_name}`, "rid": "", "sid": "", "rec_link": "" }
       }
     }
 
@@ -266,7 +281,7 @@ else {
     if (notification_field_name && notification_field_name.trim() !== "") {
       fld = getFieldWithName(sht, notification_field_name);
       if (!fld) {
-        createFiled(sht, notification_field_name);
+        return { "respData": `录入失败：字段不存在 ${notification_field_name}`, "rid": "", "sid": "", "rec_link": "" }
       }
     }
     sht = shtType != "d" ? Application.Sheets(shtName) : getShtWithName(shtName);
@@ -283,37 +298,40 @@ else {
     if (table_type == "在线工作表") {
       fld = getFieldWithName(sht, "_创建时间");
       if (!fld) {
-        createFiled(sht, "_创建时间");
-      }
-    }
-    // 检查是否需要创建 _原始附件 字段：如果开启了上传文件功能，且是图片/文件识别（有 file_base64），则创建
-    if (upload_file == "是" && file_base64 && shtType == "d") {
-      fld = getFieldWithName(sht, originalAttackmentFieldName)
-      if (!fld) {
-        createAttachmentFiled(sht, originalAttackmentFieldName)
+        return { "respData": `录入失败：字段不存在 _创建时间`, "rid": "", "sid": "", "rec_link": "" }
       }
     }
     const fields_arr = []
     const image_fields_info = [] // 存储图片字段信息，用于后续处理
+    const invalid_fields = {}
     
     Array.from(row_fields_data).forEach((fields_data, record_index) => {
       const fields = {};
       fields_data.forEach(item => {
         fld = getFieldWithName(sht, item.field_name);
         if (!fld) {
-          if (table_type == "在线工作表") {
+          if (canAutoCreateField(item.field_name)) {
             createFiled(sht, item.field_name);
-          } else {
-            if (item.field_format == "文本") {
+            fld = getFieldWithName(sht, item.field_name);
+          } else if (canCreateBusinessField(item.field_name)) {
+            if (table_type == "在线工作表") {
               createFiled(sht, item.field_name);
-            } else if (item.field_format == "数字") {
-              createNumberFiled(sht, item.field_name)
-            } else if (item.field_format == "图片") {
-              // 创建图片字段（附件类型）
-              createAttachmentFiled(sht, item.field_name)
+            } else {
+              if (item.field_format == "数字") {
+                createNumberFiled(sht, item.field_name)
+              } else if (item.field_format == "图片" || item.field_format == "附件") {
+                createAttachmentFiled(sht, item.field_name)
+              } else {
+                createFiled(sht, item.field_name);
+              }
             }
+            fld = getFieldWithName(sht, item.field_name);
+          } else {
+            invalid_fields[item.field_name] = true
+            return
           }
         }
+        if (!fld) return
         
         // 处理图片/附件字段：从图片/附件字段的 file_base64 和 file_name 读取
         // 兼容旧配置：字段格式为"图片"也视为附件字段
@@ -368,6 +386,10 @@ else {
       }
       fields_arr.push(fields)
     })
+    const invalid_names = Object.keys(invalid_fields)
+    if (invalid_names.length > 0) {
+      return { "respData": `录入失败：以下字段不存在且不允许自动创建 ${invalid_names.join(",")}`, "rid": "", "sid": "", "rec_link": "" }
+    }
 
     if (table_type != "在线工作表") {
       let s = Application.Sheets(shtName)
