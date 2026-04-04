@@ -96,6 +96,18 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 
 详细参数与示例请查看 `docs/安装与调用说明.md`。
 
+### 提交人/提交渠道来源优先级
+
+为保证写入“实际渠道/实际用户”，当前优先级如下（从高到低）：
+
+1. 显式入参（`submitter` / `submit_channel`）
+2. `WPS_SKILL_DATA` 中的元数据（如 `submitter`、`submit_channel`、`_提交人`、`_提交渠道`）
+3. OpenClaw/聊天运行时环境变量（如 `OPENCLAW_USER`、`OPENCLAW_CHANNEL`、`CHAT_PLATFORM`）
+4. 兜底环境变量（`WPS_SUBMITTER` / `WPS_SUBMIT_CHANNEL`）
+5. 最终兜底（提交人=`agent`，提交渠道=`route.key`）
+
+如果你发现渠道不正确，优先在 OpenClaw 侧传入 `submit_channel` 或设置 `OPENCLAW_CHANNEL`。
+
 ### 补传附件示例（不新增记录）
 
 ```powershell

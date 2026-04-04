@@ -69,6 +69,67 @@ def _compact_airscript_response(data: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
+def _first_non_empty(*values: Any) -> str:
+    for v in values:
+        if v is None:
+            continue
+        text = str(v).strip()
+        if text:
+            return text
+    return ""
+
+
+def _env_first(names: List[str]) -> str:
+    for name in names:
+        v = os.getenv(name, "")
+        if v and str(v).strip():
+            return str(v).strip()
+    return ""
+
+
+def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[str, Any], route: Dict[str, Any]) -> Tuple[str, str]:
+    payload = user_data or {}
+    payload_submitter = _first_non_empty(
+        payload.get("submitter"),
+        payload.get("_提交人"),
+        payload.get("提交人"),
+        payload.get("nickname"),
+        payload.get("user_name"),
+        payload.get("username")
+    )
+    payload_channel = _first_non_empty(
+        payload.get("submit_channel"),
+        payload.get("_提交渠道"),
+        payload.get("提交渠道"),
+        payload.get("channel"),
+        payload.get("source_channel"),
+        payload.get("platform")
+    )
+    dynamic_submitter = _env_first([
+        "OPENCLAW_SUBMITTER", "OPENCLAW_USER", "OPENCLAW_USERNAME", "OPENCLAW_NICKNAME",
+        "REQUESTER_USER_VALUE", "CHAT_USER", "CHAT_USERNAME", "MESSAGE_USER", "SENDER_NAME", "SENDER_ID"
+    ])
+    dynamic_channel = _env_first([
+        "OPENCLAW_CHANNEL", "OPENCLAW_PLATFORM", "REQUESTER_GROUP_VALUE",
+        "CHAT_CHANNEL", "CHAT_PLATFORM", "MESSAGE_CHANNEL", "MESSAGE_PLATFORM", "IM_PLATFORM", "SOURCE_CHANNEL"
+    ])
+    actual_submitter = _first_non_empty(
+        submitter,
+        payload_submitter,
+        dynamic_submitter,
+        os.getenv("WPS_SUBMITTER", ""),
+        "agent"
+    )
+    actual_submit_channel = _first_non_empty(
+        submit_channel,
+        payload_channel,
+        dynamic_channel,
+        os.getenv("WPS_SUBMIT_CHANNEL", ""),
+        route.get("key")
+    )
+    return actual_submitter, actual_submit_channel
+
+
 def load_webhook_map() -> Dict[str, Any]:
     map_path = Path(os.getenv(MAP_ENV, str(DEFAULT_MAP_PATH)))
     with map_path.open("r", encoding="utf-8") as f:
@@ -290,8 +351,7 @@ def create_record(
             payload_data = ordered_data
     field_config = get_fields_config(route, token)
     fields = build_fields_payload(field_config, payload_data)
-    actual_submitter = submitter or os.getenv("WPS_SUBMITTER", "agent")
-    actual_submit_channel = submit_channel or os.getenv("WPS_SUBMIT_CHANNEL", route.get("key"))
+    actual_submitter, actual_submit_channel = _resolve_submit_meta(submitter, submit_channel, payload_data, route)
     argv = {
         "sheet_name": route.get("sheet_name"),
         "table_type": "多维表",
