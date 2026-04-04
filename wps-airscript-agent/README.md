@@ -71,10 +71,28 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 ## 常用调用
 
 - 录入：`WPS_SKILL_MODE=create`
+- 补传附件到已存在记录：`WPS_SKILL_MODE=update_attachment`
 - 查询参数预览：`WPS_SKILL_MODE=query_argv`
 - 查询执行：`WPS_SKILL_MODE=query`
 
 详细参数与示例请查看 `docs/安装与调用说明.md`。
+
+### 补传附件示例（不新增记录）
+
+```powershell
+$env:WPS_SKILL_MODE="update_attachment"
+$env:WPS_SKILL_INTENT="花名册"
+$env:WPS_UPDATE_KEY_FIELD="姓名"
+$env:WPS_UPDATE_KEY_VALUE="李附件测试"
+$env:WPS_UPDATE_ATTACHMENT_FIELD="相关资料附件"
+$env:WPS_UPDATE_ATTACHMENT='{"file_path":"C:\\Users\\sunli\\Downloads\\demo.pdf"}'
+python ".\scripts\wps_skill_router.py"
+```
+
+说明：
+
+- 该模式会按 `WPS_UPDATE_KEY_FIELD/WPS_UPDATE_KEY_VALUE` 定位已存在记录并更新附件字段。
+- 若没有命中记录，将按现有逻辑创建新记录。
 
 ## 附件字段入参规范（OpenClaw 推荐）
 
@@ -101,6 +119,27 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 - `file_name` 建议带扩展名（如 `.pdf` / `.png`）。
 - 若传入纯 base64（不含 `data:mime;base64,` 前缀），路由会按 `file_name` 推断 MIME 并自动补全。
 
+### OpenClaw 低 Token 附件策略模板
+
+建议在 OpenClaw 的提示词或工具编排层加如下规则：
+
+1. 禁止把附件原始内容（base64大文本）直接拼进用户对话上下文。
+2. 优先传 `file_path` 或 `file_url`。
+3. 仅在无法获取路径/链接时才传 `file_data`，且必须带 `file_name`。
+
+推荐输出给 Skill 的附件参数模板：
+
+```json
+{
+  "相关资料附件": {
+    "files": [
+      {"file_path": "D:\\docs\\a.pdf"},
+      {"file_url": "https://example.com/b.png", "file_name": "b.png"}
+    ]
+  }
+}
+```
+
 ## Token 消耗优化建议
 
 为尽量降低 Agent token 消耗，建议：
@@ -110,6 +149,20 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 - `WPS_QUERY_RETURN_FIELDS` 仅保留必要字段，避免大字段回传。
 - 调用 `query` 时优先使用 `WPS_QUERY_OUTPUT_FORMAT=text`，减少 JSON 冗余。
 - 附件上传优先传 `file_path` 或 `file_url`，避免把超长 base64 文本放进对话上下文。
+
+## 意图识别与自动调用（OpenClaw）
+
+为降低“识别不到意图导致不调用 Skill”的概率，建议在 OpenClaw 的系统提示词中加入：
+
+- 用户提到以下任一关键词时，优先调用 `wps-airscript-agent`：
+  - 业务词：`报销`、`花名册`、`员工`、`通讯录`
+  - 动作词：`录入`、`新增`、`登记`、`查询`、`统计`、`汇总`
+  - 字段词：`金额`、`状态`、`附件`、`平均值`、`总和`
+- 若用户意图是“写入数据”，先走 `fields` 再走 `create`。
+- 若用户意图是“查数据/统计”，直接走 `query`，并尽量设置：
+  - `WPS_QUERY_RETURN_MODE=selected_fields`
+  - `WPS_QUERY_OUTPUT_FORMAT=text`
+- 当路由不明确时，先调用 `setup` 并根据 `routes` 做二次匹配，不要直接放弃。
 
 ## 安全说明
 

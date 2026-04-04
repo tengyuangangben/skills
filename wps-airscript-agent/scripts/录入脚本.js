@@ -639,7 +639,7 @@ function addRecords(sht, recs) {
     // 遍历 filter_recs，检查是否在 recs 中
     if (filter_recs[0]) {
       Array.from(filter_recs).forEach(filterRec => {
-        let matchIndex = Array.from(recs).findIndex(rec => rec.fields.id === filterRec.fields.id);
+        let matchIndex = Array.from(recs).findIndex(rec => rec.fields[keyName] === filterRec.fields[keyName]);
         if (matchIndex !== -1) {
           // 添加 `id` 属性并推送到 update_rec_arr
           let matchedRec = { ...recs[matchIndex], id: filterRec.id };

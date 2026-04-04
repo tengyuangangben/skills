@@ -263,7 +263,13 @@ def build_fields_payload(field_config: List[Dict[str, Any]], user_data: Dict[str
     return [one_record]
 
 
-def create_record(intent: str, user_data: Dict[str, Any], submitter: str = "", submit_channel: str = "") -> Dict[str, Any]:
+def create_record(
+    intent: str,
+    user_data: Dict[str, Any],
+    submitter: str = "",
+    submit_channel: str = "",
+    overwrite_mode: bool = False
+) -> Dict[str, Any]:
     mapping = load_webhook_map()
     token = get_token()
     route = find_route(intent, mapping)
@@ -279,6 +285,7 @@ def create_record(intent: str, user_data: Dict[str, Any], submitter: str = "", s
         "table_type": "多维表",
         "request_type": "content",
         "full_input_mode": False,
+        "overwrite_mode": "是" if overwrite_mode else "否",
         "submitter": actual_submitter,
         "submit_channel": actual_submit_channel,
         "request_id": f"{route.get('key')}-{os.urandom(4).hex()}",
@@ -286,6 +293,20 @@ def create_record(intent: str, user_data: Dict[str, Any], submitter: str = "", s
         "fields": fields
     }
     return post_airscript(write_webhook, argv, token)
+
+
+def update_attachment_record(intent: str, key_field: str, key_value: Any, attachment_field: str, attachment_value: Any) -> Dict[str, Any]:
+    if not key_field:
+        raise ValueError("缺少 WPS_UPDATE_KEY_FIELD")
+    if key_value in (None, ""):
+        raise ValueError("缺少 WPS_UPDATE_KEY_VALUE")
+    if not attachment_field:
+        raise ValueError("缺少 WPS_UPDATE_ATTACHMENT_FIELD")
+    ordered_user_data: Dict[str, Any] = {
+        key_field: key_value,
+        attachment_field: attachment_value
+    }
+    return create_record(intent, ordered_user_data, overwrite_mode=True)
 
 
 def get_required_fields(intent: str) -> Dict[str, Any]:
@@ -673,6 +694,12 @@ if __name__ == "__main__":
                 print(format_query_result_for_human(result))
             else:
                 print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif mode == "update_attachment":
+            key_field = os.getenv("WPS_UPDATE_KEY_FIELD", "")
+            key_value = os.getenv("WPS_UPDATE_KEY_VALUE", "")
+            attachment_field = os.getenv("WPS_UPDATE_ATTACHMENT_FIELD", "")
+            attachment_value = json.loads(os.getenv("WPS_UPDATE_ATTACHMENT", "{}"))
+            print(json.dumps(update_attachment_record(demo_intent, key_field, key_value, attachment_field, attachment_value), ensure_ascii=False, indent=2))
         else:
             demo_data = json.loads(os.getenv("WPS_SKILL_DATA", "{}"))
             print(json.dumps(create_record(demo_intent, demo_data), ensure_ascii=False, indent=2))
