@@ -595,6 +595,40 @@ def update_attachment_record(
     return create_record(intent, patch_data, overwrite_mode=True, key_field=key_field, key_value=key_value)
 
 
+def update_record_fields(
+    intent: str,
+    key_field: str,
+    key_value: Any,
+    update_data: Dict[str, Any],
+    must_exist: bool = True
+) -> Dict[str, Any]:
+    if not key_field:
+        raise ValueError("缺少 WPS_UPDATE_KEY_FIELD")
+    if key_value in (None, ""):
+        raise ValueError("缺少 WPS_UPDATE_KEY_VALUE")
+    patch = dict(update_data or {})
+    if not patch:
+        raise ValueError("缺少 WPS_UPDATE_FIELDS_JSON")
+    if key_field in patch:
+        patch.pop(key_field, None)
+    if not patch:
+        raise ValueError("更新字段不能为空")
+    if must_exist:
+        q = query_records_enhanced(
+            intent=intent,
+            monitor_field_name=key_field,
+            monitor_content=str(key_value),
+            check_field_rule="等于",
+            return_mode="selected_fields",
+            return_fields=[key_field],
+            include_attachment_fields=False
+        )
+        _, rows = _extract_result_rows(q)
+        if not rows:
+            raise ValueError(f"未找到待更新记录: {key_field}={key_value}")
+    return create_record(intent, patch, overwrite_mode=True, key_field=key_field, key_value=key_value)
+
+
 def delete_records(
     intent: str,
     delete_field_name: str = "",
@@ -1155,6 +1189,12 @@ if __name__ == "__main__":
             attachment_value = json.loads(os.getenv("WPS_UPDATE_ATTACHMENT", "{}"))
             merge_mode = os.getenv("WPS_UPDATE_ATTACHMENT_MODE", "replace")
             print(json.dumps(update_attachment_record(demo_intent, key_field, key_value, attachment_field, attachment_value, merge_mode), ensure_ascii=False, indent=2))
+        elif mode == "update":
+            key_field = os.getenv("WPS_UPDATE_KEY_FIELD", "")
+            key_value = os.getenv("WPS_UPDATE_KEY_VALUE", "")
+            update_data = json.loads(os.getenv("WPS_UPDATE_FIELDS_JSON", "{}"))
+            must_exist = _parse_bool(os.getenv("WPS_UPDATE_MUST_EXIST", "true"), True)
+            print(json.dumps(update_record_fields(demo_intent, key_field, key_value, update_data, must_exist), ensure_ascii=False, indent=2))
         elif mode == "delete":
             delete_field_name = os.getenv("WPS_DELETE_FIELD", "")
             delete_field_value = os.getenv("WPS_DELETE_VALUE", "")

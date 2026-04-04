@@ -124,6 +124,7 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 
 - 录入：`WPS_SKILL_MODE=create`
 - 补传附件到已存在记录：`WPS_SKILL_MODE=update_attachment`
+- 更新已有记录字段：`WPS_SKILL_MODE=update`
 - 查询参数预览：`WPS_SKILL_MODE=query_argv`
 - 查询执行：`WPS_SKILL_MODE=query`
 
@@ -152,6 +153,18 @@ $env:WPS_SKILL_INTENT="花名册"
 $env:WPS_DELETE_FIELD="姓名"
 $env:WPS_DELETE_VALUE="李附件测试"
 $env:WPS_DELETE_RULE="等于"
+python ".\scripts\wps_skill_router.py"
+```
+
+### 更新记录示例（修改字段内容）
+
+```powershell
+$env:WPS_SKILL_MODE="update"
+$env:WPS_SKILL_INTENT="花名册"
+$env:WPS_UPDATE_KEY_FIELD="姓名"
+$env:WPS_UPDATE_KEY_VALUE="李附件测试"
+$env:WPS_UPDATE_FIELDS_JSON='{"联系电话":"13800001111","客户状态":"活跃"}'
+$env:WPS_UPDATE_MUST_EXIST="true"
 python ".\scripts\wps_skill_router.py"
 ```
 
