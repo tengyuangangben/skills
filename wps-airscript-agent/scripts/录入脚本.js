@@ -64,7 +64,7 @@ function isTrueValue(v) {
 }
 function canCreateBusinessField(fieldName) {
   if (!isTrueValue(allow_new_fields)) return false
-  if (!Array.isArray(new_fields_whitelist) || new_fields_whitelist.length == 0) return true
+  if (!Array.isArray(new_fields_whitelist) || new_fields_whitelist.length == 0) return false
   return new_fields_whitelist.includes(fieldName)
 }
 if (request_type == "delete_record") {

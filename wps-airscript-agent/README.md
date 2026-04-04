@@ -297,4 +297,5 @@ python ".\scripts\wps_skill_router.py"
 - 其余不存在字段会直接返回失败，不会自动新增，避免污染表结构。
 - 如用户明确要求“新增字段”时，可显式开启：
   - `WPS_ALLOW_NEW_FIELDS=true`
+  - `WPS_ALLOW_NEW_FIELDS_REQUESTED=true`
   - `WPS_NEW_FIELDS_WHITELIST=字段A,字段B`

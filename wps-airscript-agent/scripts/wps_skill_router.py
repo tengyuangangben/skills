@@ -511,6 +511,18 @@ def create_record(
     if not write_webhook or "请替换" in write_webhook:
         raise ValueError(f"{route.get('name')} 未配置 write_webhook")
     payload_data: Dict[str, Any] = dict(user_data or {})
+    payload_allow_new_fields = _parse_bool(payload_data.pop("_allow_new_fields", False), False)
+    payload_whitelist_raw = payload_data.pop("_new_fields_whitelist", [])
+    payload_whitelist: List[str] = []
+    if isinstance(payload_whitelist_raw, list):
+        payload_whitelist = [str(x).strip() for x in payload_whitelist_raw if str(x).strip()]
+    elif isinstance(payload_whitelist_raw, str):
+        payload_whitelist = [x.strip() for x in payload_whitelist_raw.split(",") if x.strip()]
+    env_allow_new_fields = _parse_bool(os.getenv("WPS_ALLOW_NEW_FIELDS", "false"), False)
+    env_explicit_confirm = _parse_bool(os.getenv("WPS_ALLOW_NEW_FIELDS_REQUESTED", "false"), False)
+    env_whitelist = [x.strip() for x in os.getenv("WPS_NEW_FIELDS_WHITELIST", "").split(",") if x.strip()]
+    effective_whitelist = payload_whitelist or env_whitelist
+    effective_allow_new_fields = env_allow_new_fields and (payload_allow_new_fields or env_explicit_confirm) and bool(effective_whitelist)
     if overwrite_mode and key_field:
         if key_value not in (None, ""):
             payload_data[key_field] = key_value
@@ -535,8 +547,8 @@ def create_record(
         "request_type": "content",
         "full_input_mode": False,
         "overwrite_mode": "是" if overwrite_mode else "否",
-        "allow_new_fields": "是" if _parse_bool(os.getenv("WPS_ALLOW_NEW_FIELDS", "false"), False) else "否",
-        "new_fields_whitelist": [x.strip() for x in os.getenv("WPS_NEW_FIELDS_WHITELIST", "").split(",") if x.strip()],
+        "allow_new_fields": "是" if effective_allow_new_fields else "否",
+        "new_fields_whitelist": effective_whitelist,
         "submitter": actual_submitter,
         "submit_channel": actual_submit_channel,
         "request_id": f"{route.get('key')}-{os.urandom(4).hex()}",
