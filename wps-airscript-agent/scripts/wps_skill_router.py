@@ -103,6 +103,27 @@ def _env_first(names: List[str]) -> str:
     return ""
 
 
+def _resolve_webhook_map_path() -> Path:
+    env_path = str(os.getenv(MAP_ENV, "")).strip()
+    if env_path:
+        return Path(env_path).expanduser()
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent
+    root_dir = script_dir.parent if script_dir.name.lower() == "scripts" else script_dir
+    candidates: List[Path] = []
+    for p in [
+        script_path.with_name("wps_webhook_map.json"),
+        root_dir / "wps_webhook_map.json",
+        Path.cwd() / "wps_webhook_map.json"
+    ]:
+        if p not in candidates:
+            candidates.append(p)
+    for p in candidates:
+        if p.exists():
+            return p
+    return candidates[0]
+
+
 def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[str, Any], route: Dict[str, Any]) -> Tuple[str, str]:
     payload = user_data or {}
     payload_submitter = _first_non_empty(
@@ -157,7 +178,21 @@ def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[st
 
 
 def load_webhook_map() -> Dict[str, Any]:
-    map_path = Path(os.getenv(MAP_ENV, str(DEFAULT_MAP_PATH)))
+    map_path = _resolve_webhook_map_path()
+    if not map_path.exists():
+        script_path = Path(__file__).resolve()
+        script_dir = script_path.parent
+        root_dir = script_dir.parent if script_dir.name.lower() == "scripts" else script_dir
+        tried = [
+            str(script_path.with_name("wps_webhook_map.json")),
+            str(root_dir / "wps_webhook_map.json"),
+            str((Path.cwd() / "wps_webhook_map.json"))
+        ]
+        if os.getenv(MAP_ENV):
+            tried.insert(0, str(Path(os.getenv(MAP_ENV, "")).expanduser()))
+        raise ValueError(
+            f"未找到 webhook 配置文件。请设置 {MAP_ENV} 或将 wps_webhook_map.json 放在技能目录。已尝试: {tried}"
+        )
     with map_path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -827,6 +862,7 @@ def format_query_result_for_human(result: Dict[str, Any]) -> str:
 
 
 def get_setup_status() -> Dict[str, Any]:
+    map_path = _resolve_webhook_map_path()
     mapping = load_webhook_map()
     token = os.getenv(TOKEN_ENV, "")
     routes = []
@@ -842,7 +878,8 @@ def get_setup_status() -> Dict[str, Any]:
     return {
         "token_configured": bool(token),
         "token_env": TOKEN_ENV,
-        "map_path": os.getenv(MAP_ENV, str(DEFAULT_MAP_PATH)),
+        "map_path": str(map_path),
+        "map_exists": map_path.exists(),
         "routes": routes
     }
 

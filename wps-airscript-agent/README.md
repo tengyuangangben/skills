@@ -89,6 +89,10 @@ npx degit tengyuangangben/skills/wps-airscript-agent ./wps-airscript-agent
 4. 设置环境变量：
    - 必需：`WPS_AIRSCRIPT_TOKEN`
    - 可选：`WPS_WEBHOOK_MAP_PATH`、`WPS_SUBMITTER`、`WPS_SUBMIT_CHANNEL`
+   - 若不设置 `WPS_WEBHOOK_MAP_PATH`，脚本会按顺序自动查找：
+     1) `scripts/wps_webhook_map.json`
+     2) Skill 根目录 `wps_webhook_map.json`
+     3) 当前工作目录 `wps_webhook_map.json`
 5. 运行健康检查与字段发现：
    - `WPS_SKILL_MODE=setup`
    - `WPS_SKILL_MODE=fields`
