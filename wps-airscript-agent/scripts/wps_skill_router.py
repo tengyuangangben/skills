@@ -523,6 +523,11 @@ def create_record(
     field_config = get_fields_config(route, token)
     _validate_user_data(field_config, payload_data, enforce_required=not overwrite_mode)
     fields = build_fields_payload(field_config, payload_data)
+    if overwrite_mode and key_field and fields and isinstance(fields[0], list):
+        one_record = fields[0]
+        key_items = [x for x in one_record if isinstance(x, dict) and x.get("field_name") == key_field]
+        if key_items:
+            fields[0] = key_items + [x for x in one_record if not (isinstance(x, dict) and x.get("field_name") == key_field)]
     actual_submitter, actual_submit_channel = _resolve_submit_meta(submitter, submit_channel, payload_data, route)
     argv = {
         "sheet_name": route.get("sheet_name"),
