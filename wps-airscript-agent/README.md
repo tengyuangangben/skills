@@ -134,6 +134,7 @@ $env:WPS_SKILL_INTENT="花名册"
 $env:WPS_UPDATE_KEY_FIELD="姓名"
 $env:WPS_UPDATE_KEY_VALUE="李附件测试"
 $env:WPS_UPDATE_ATTACHMENT_FIELD="相关资料附件"
+$env:WPS_UPDATE_ATTACHMENT_MODE="append"
 $env:WPS_UPDATE_ATTACHMENT='{"file_path":"C:\\Users\\sunli\\Downloads\\demo.pdf"}'
 python ".\scripts\wps_skill_router.py"
 ```
@@ -141,6 +142,7 @@ python ".\scripts\wps_skill_router.py"
 说明：
 
 - 该模式会按 `WPS_UPDATE_KEY_FIELD/WPS_UPDATE_KEY_VALUE` 定位已存在记录并更新附件字段。
+- `WPS_UPDATE_ATTACHMENT_MODE=append` 时会先读取已有附件并追加写入，避免覆盖。
 - 若没有命中记录，将按现有逻辑创建新记录。
 - 默认 `create` 模式不会自动关联“上一轮新增的记录”，所以“分两次对话先新增后补附件”应使用 `update_attachment` 或开启覆盖模式并提供主键。
 

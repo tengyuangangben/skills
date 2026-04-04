@@ -3,6 +3,7 @@ import os
 import base64
 import mimetypes
 import sys
+import hashlib
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -394,15 +395,39 @@ def create_record(
     return post_airscript(write_webhook, argv, token)
 
 
-def update_attachment_record(intent: str, key_field: str, key_value: Any, attachment_field: str, attachment_value: Any) -> Dict[str, Any]:
+def update_attachment_record(
+    intent: str,
+    key_field: str,
+    key_value: Any,
+    attachment_field: str,
+    attachment_value: Any,
+    merge_mode: str = "replace"
+) -> Dict[str, Any]:
     if not key_field:
         raise ValueError("缺少 WPS_UPDATE_KEY_FIELD")
     if key_value in (None, ""):
         raise ValueError("缺少 WPS_UPDATE_KEY_VALUE")
     if not attachment_field:
         raise ValueError("缺少 WPS_UPDATE_ATTACHMENT_FIELD")
+    mode = str(merge_mode or "replace").strip().lower()
+    patch_value: Any = attachment_value
+    if mode in ("append", "merge", "追加", "合并"):
+        q = query_records_enhanced(
+            intent=intent,
+            monitor_field_name=key_field,
+            monitor_content=str(key_value),
+            check_field_rule="等于",
+            return_mode="selected_fields",
+            return_fields=[attachment_field],
+            include_attachment_fields=True
+        )
+        _, rows = _extract_result_rows(q)
+        existing_value: Any = None
+        if rows and isinstance(rows[0], dict):
+            existing_value = rows[0].get(attachment_field)
+        patch_value = _merge_attachment_values(existing_value, attachment_value)
     patch_data: Dict[str, Any] = {
-        attachment_field: attachment_value
+        attachment_field: patch_value
     }
     return create_record(intent, patch_data, overwrite_mode=True, key_field=key_field, key_value=key_value)
 
@@ -504,6 +529,76 @@ def _extract_result_rows(result: Dict[str, Any]) -> Tuple[List[Any], List[Any]]:
 
 def _extract_result_body(result: Dict[str, Any]) -> Dict[str, Any]:
     return ((result or {}).get("data") or {}).get("result") or {}
+
+
+def _attachment_items_from_value(value: Any) -> List[Dict[str, str]]:
+    items: List[Dict[str, str]] = []
+
+    def append_item(data: Dict[str, str]) -> None:
+        if isinstance(data, dict) and data:
+            items.append(data)
+
+    if isinstance(value, list):
+        for x in value:
+            items.extend(_attachment_items_from_value(x))
+        return items
+
+    if isinstance(value, dict):
+        if isinstance(value.get("files"), list):
+            for x in value.get("files", []):
+                items.extend(_attachment_items_from_value(x))
+            return items
+        file_name = str(value.get("file_name") or value.get("name") or value.get("fileName") or value.get("title") or "").strip()
+        file_url = str(value.get("file_url") or value.get("url") or value.get("link") or value.get("download_url") or value.get("href") or "").strip()
+        file_path = str(value.get("file_path") or value.get("path") or "").strip()
+        file_data = str(value.get("file_data") or value.get("file_base64") or value.get("base64") or value.get("data_uri") or value.get("dataUri") or "").strip()
+        if file_url:
+            append_item({"file_url": file_url, "file_name": file_name})
+            return items
+        if file_path:
+            append_item({"file_path": file_path, "file_name": file_name})
+            return items
+        if file_data:
+            append_item({"file_data": file_data, "file_name": file_name})
+            return items
+        return items
+
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return items
+        if text.lower().startswith("http://") or text.lower().startswith("https://"):
+            append_item({"file_url": text})
+        elif text.lower().startswith("data:"):
+            append_item({"file_data": text})
+        else:
+            append_item({"file_path": text})
+    return items
+
+
+def _attachment_signature(item: Dict[str, str]) -> str:
+    if item.get("file_url"):
+        return f"url|{item.get('file_url')}|{item.get('file_name', '')}"
+    if item.get("file_path"):
+        return f"path|{item.get('file_path')}|{item.get('file_name', '')}"
+    data = item.get("file_data", "")
+    if data:
+        digest = hashlib.sha1(data.encode("utf-8", errors="ignore")).hexdigest()
+        return f"data|{digest}|{item.get('file_name', '')}"
+    return json.dumps(item, ensure_ascii=False, sort_keys=True)
+
+
+def _merge_attachment_values(existing_value: Any, new_value: Any) -> Dict[str, Any]:
+    merged: List[Dict[str, str]] = []
+    seen: set[str] = set()
+    for src in (_attachment_items_from_value(existing_value), _attachment_items_from_value(new_value)):
+        for item in src:
+            sig = _attachment_signature(item)
+            if sig in seen:
+                continue
+            seen.add(sig)
+            merged.append(item)
+    return {"files": merged}
 
 
 def _to_num(v: Any) -> float:
@@ -798,7 +893,8 @@ if __name__ == "__main__":
             key_value = os.getenv("WPS_UPDATE_KEY_VALUE", "")
             attachment_field = os.getenv("WPS_UPDATE_ATTACHMENT_FIELD", "")
             attachment_value = json.loads(os.getenv("WPS_UPDATE_ATTACHMENT", "{}"))
-            print(json.dumps(update_attachment_record(demo_intent, key_field, key_value, attachment_field, attachment_value), ensure_ascii=False, indent=2))
+            merge_mode = os.getenv("WPS_UPDATE_ATTACHMENT_MODE", "replace")
+            print(json.dumps(update_attachment_record(demo_intent, key_field, key_value, attachment_field, attachment_value, merge_mode), ensure_ascii=False, indent=2))
         else:
             demo_data = json.loads(os.getenv("WPS_SKILL_DATA", "{}"))
             overwrite_mode = _parse_bool(os.getenv("WPS_OVERWRITE_MODE", "false"), False)

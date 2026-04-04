@@ -43,6 +43,8 @@
      - `WPS_UPDATE_KEY_VALUE`
      - `WPS_UPDATE_ATTACHMENT_FIELD`
      - `WPS_UPDATE_ATTACHMENT`
+   - 多消息补附件场景强制：
+     - `WPS_UPDATE_ATTACHMENT_MODE=append`
 
 4. 路由不明确：
    - 先调用 setup 获取 routes
@@ -116,4 +118,4 @@
    - 用户同意后再设置 `WPS_ALLOW_NEW_FIELDS=true` 并限定白名单重试。
 4. 如果用户分多条消息连续补附件：
    - 优先继续处于收集态，待“确认提交”后一次写入。
-   - 若必须逐条写入，使用 `update_attachment` 且启用附件追加策略（避免覆盖）。
+   - 若必须逐条写入，使用 `update_attachment` 且设置 `WPS_UPDATE_ATTACHMENT_MODE=append`（避免覆盖）。
