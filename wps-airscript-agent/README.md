@@ -9,8 +9,8 @@
 
 ## 版本信息
 
-- 当前版本：`v1.1.1`
-- Release：`https://github.com/tengyuangangben/skills/releases/tag/v1.1.1`
+- 当前版本：`v1.1.2`
+- Release：`https://github.com/tengyuangangben/skills/releases/tag/v1.1.2`
 - 版本历史：`../../CHANGELOG.md`
 
 ## 从 v1.0.0 升级到 v1.1.0
@@ -40,6 +40,18 @@
 - 默认严格字段写入，避免误新增字段污染表结构。
 - 提交人/提交渠道优先采用运行时真实来源。
 - OpenClaw 自动调用策略补充“新增字段需用户明确授权”规则。
+
+## 从 v1.1.1 升级到 v1.1.2
+
+1. 更新 `scripts/wps_skill_router.py` 与 `docs/安装与调用说明.md`。
+2. 若你在 OpenClaw 中不设置 `WPS_WEBHOOK_MAP_PATH`，可直接使用 skill 根目录下的 `wps_webhook_map.json`（已支持自动发现）。
+3. 多消息补附件场景建议设置：
+   - `WPS_UPDATE_ATTACHMENT_MODE=append`
+
+升级收益：
+
+- `wps_webhook_map.json` 默认路径识别更稳，不再必须手动传路径。
+- `update_attachment` 支持 append 合并，避免多消息附件后写覆盖前写。
 
 ## 给 Agent 的安装指引（重点）
 

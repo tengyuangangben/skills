@@ -2,6 +2,22 @@
 
 All notable changes to this repository are documented in this file.
 
+## [v1.1.2] - 2026-04-04
+
+### Added
+- Attachment append mode for multi-message uploads: `WPS_UPDATE_ATTACHMENT_MODE=append`.
+- Setup output now includes resolved webhook map path and existence status.
+
+### Changed
+- Webhook map path resolution now auto-detects in this order when env is unset:
+  - `scripts/wps_webhook_map.json`
+  - skill root `wps_webhook_map.json`
+  - current working directory `wps_webhook_map.json`
+
+### Fixed
+- OpenClaw runtime no longer requires explicit `WPS_WEBHOOK_MAP_PATH` in common skill-layout deployments.
+- Split-message attachment uploads no longer lose earlier files when append mode is enabled.
+
 ## [v1.1.1] - 2026-04-04
 
 ### Added

@@ -5,8 +5,8 @@ Each skill is maintained in its own folder with an independent `README.md`.
 
 ## Version
 
-- Current stable release: `v1.1.1`
-- Latest release page: `https://github.com/tengyuangangben/skills/releases/tag/v1.1.1`
+- Current stable release: `v1.1.2`
+- Latest release page: `https://github.com/tengyuangangben/skills/releases/tag/v1.1.2`
 - Change history: `CHANGELOG.md`
 
 ## Repository Structure
@@ -56,8 +56,8 @@ If your agent supports local-folder skill installation, point it to `./wps-airsc
 
 ## Upgrade Path
 
-- From `v1.0.0`: upgrade to `v1.1.0`, then to `v1.1.1`
-- From `v1.1.0`: upgrade directly to `v1.1.1`
+- From `v1.0.0`: upgrade to `v1.1.0`, then to `v1.1.2`
+- From `v1.1.0` or `v1.1.1`: upgrade directly to `v1.1.2`
 - After upgrading:
   - republish WPS-side `录入脚本.js`
   - run `setup` once for health checks
