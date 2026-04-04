@@ -2,6 +2,7 @@ import json
 import os
 import base64
 import mimetypes
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -67,6 +68,20 @@ def _compact_airscript_response(data: Dict[str, Any]) -> Dict[str, Any]:
         out["data"] = payload
         return out
     return data
+
+
+def _ensure_utf8_stdio() -> None:
+    os.environ["PYTHONIOENCODING"] = "utf-8"
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None:
+            continue
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
 
 
 def _first_non_empty(*values: Any) -> str:
@@ -728,6 +743,7 @@ def get_setup_status() -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
+    _ensure_utf8_stdio()
     try:
         demo_intent = os.getenv("WPS_SKILL_INTENT", "报销")
         mode = os.getenv("WPS_SKILL_MODE", "fields")
