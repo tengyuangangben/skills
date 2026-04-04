@@ -101,6 +101,16 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 - `file_name` 建议带扩展名（如 `.pdf` / `.png`）。
 - 若传入纯 base64（不含 `data:mime;base64,` 前缀），路由会按 `file_name` 推断 MIME 并自动补全。
 
+## Token 消耗优化建议
+
+为尽量降低 Agent token 消耗，建议：
+
+- 默认不要返回执行日志（本版已默认裁剪 `data.logs`）。
+- 查询优先使用单次返回模式（`selected_fields` / `all_fields`），避免按字段多次查询。
+- `WPS_QUERY_RETURN_FIELDS` 仅保留必要字段，避免大字段回传。
+- 调用 `query` 时优先使用 `WPS_QUERY_OUTPUT_FORMAT=text`，减少 JSON 冗余。
+- 附件上传优先传 `file_path` 或 `file_url`，避免把超长 base64 文本放进对话上下文。
+
 ## 安全说明
 
 - 不要提交真实 token、真实 webhook、个人本地绝对路径。

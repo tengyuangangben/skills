@@ -42,6 +42,33 @@ TYPE_TO_FORMAT = {
 }
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    s = str(v).strip().lower()
+    if s in ("1", "true", "yes", "y", "是"):
+        return True
+    if s in ("0", "false", "no", "n", "否"):
+        return False
+    return default
+
+
+def _compact_airscript_response(data: Dict[str, Any]) -> Dict[str, Any]:
+    if _env_bool("WPS_KEEP_AIRSCRIPT_LOGS", False):
+        return data
+    if not isinstance(data, dict):
+        return data
+    payload = data.get("data")
+    if isinstance(payload, dict) and "logs" in payload:
+        payload = dict(payload)
+        payload.pop("logs", None)
+        out = dict(data)
+        out["data"] = payload
+        return out
+    return data
+
+
 def load_webhook_map() -> Dict[str, Any]:
     map_path = Path(os.getenv(MAP_ENV, str(DEFAULT_MAP_PATH)))
     with map_path.open("r", encoding="utf-8") as f:
@@ -76,7 +103,7 @@ def post_airscript(webhook: str, argv: Dict[str, Any], token: str) -> Dict[str, 
     if resp.status_code >= 400:
         detail = resp.text[:500] if resp.text else ""
         raise ValueError(f"调用失败 status={resp.status_code} webhook={webhook} detail={detail}")
-    return resp.json()
+    return _compact_airscript_response(resp.json())
 
 
 def get_fields_config(route: Dict[str, Any], token: str) -> List[Dict[str, Any]]:
@@ -356,6 +383,10 @@ def _extract_result_rows(result: Dict[str, Any]) -> Tuple[List[Any], List[Any]]:
     return ids, rows
 
 
+def _extract_result_body(result: Dict[str, Any]) -> Dict[str, Any]:
+    return ((result or {}).get("data") or {}).get("result") or {}
+
+
 def _to_num(v: Any) -> float:
     text = str(v).replace(",", "").strip()
     return float(text)
@@ -457,6 +488,56 @@ def query_records_enhanced(
 ) -> Dict[str, Any]:
     if return_mode == "notification" and not return_fields and not query_conditions and not aggregate:
         return query_records(intent, monitor_field_name, monitor_content, requester_user_value, requester_group_value, notification_field_name, range_mode, check_field_rule, return_mode, return_fields, query_conditions, aggregate)
+    direct_result = query_records(
+        intent, monitor_field_name, monitor_content,
+        requester_user_value, requester_group_value,
+        notification_field_name, range_mode, check_field_rule,
+        return_mode, return_fields, query_conditions, aggregate
+    )
+    direct_body = _extract_result_body(direct_result)
+    direct_rows = direct_body.get("respData")
+    direct_ids = direct_body.get("ids")
+    if isinstance(direct_rows, list) and isinstance(direct_ids, list):
+        if return_mode == "all_fields" and not include_attachment_fields and direct_rows:
+            token = get_token()
+            mapping = load_webhook_map()
+            route = find_route(intent, mapping)
+            fields_cfg = get_fields_config(route, token)
+            attachment_names = {
+                str(item.get("name") or item.get("Name"))
+                for item in fields_cfg
+                if str(item.get("type") or item.get("Type") or "") == "Attachment" and (item.get("name") or item.get("Name"))
+            }
+            if attachment_names:
+                cleaned_rows: List[Dict[str, Any]] = []
+                for row in direct_rows:
+                    if isinstance(row, dict):
+                        cleaned_rows.append({k: v for k, v in row.items() if k not in attachment_names})
+                    else:
+                        cleaned_rows.append(row)
+                direct_rows = cleaned_rows
+        totalcount = direct_body.get("totalcount")
+        if not isinstance(totalcount, int):
+            totalcount = len(direct_rows)
+        agg = direct_body.get("aggregate")
+        if not isinstance(agg, dict):
+            agg = {}
+        if aggregate and not agg:
+            rows_for_agg = [r for r in direct_rows if isinstance(r, dict)]
+            agg = _aggregate_rows(rows_for_agg, aggregate)
+        return {
+            "status": "finished",
+            "error": "",
+            "data": {
+                "result": {
+                    "ids": direct_ids,
+                    "respData": direct_rows,
+                    "totalcount": totalcount,
+                    "aggregate": agg
+                }
+            }
+        }
+
     token = get_token()
     mapping = load_webhook_map()
     route = find_route(intent, mapping)
