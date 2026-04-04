@@ -126,8 +126,18 @@ def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[st
     ])
     dynamic_channel = _env_first([
         "OPENCLAW_CHANNEL", "OPENCLAW_PLATFORM", "REQUESTER_GROUP_VALUE",
-        "CHAT_CHANNEL", "CHAT_PLATFORM", "MESSAGE_CHANNEL", "MESSAGE_PLATFORM", "IM_PLATFORM", "SOURCE_CHANNEL"
+        "CHAT_CHANNEL", "CHAT_PLATFORM", "MESSAGE_CHANNEL", "MESSAGE_PLATFORM", "IM_PLATFORM", "SOURCE_CHANNEL",
+        "CHANNEL", "PLATFORM"
     ])
+    route_default_channel = _first_non_empty(
+        route.get("default_submit_channel"),
+        route.get("default_channel")
+    )
+    fallback_channel = _first_non_empty(
+        os.getenv("WPS_FALLBACK_SUBMIT_CHANNEL", ""),
+        route_default_channel,
+        "wecom"
+    )
     actual_submitter = _first_non_empty(
         submitter,
         payload_submitter,
@@ -140,7 +150,7 @@ def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[st
         payload_channel,
         dynamic_channel,
         os.getenv("WPS_SUBMIT_CHANNEL", ""),
-        route.get("key")
+        fallback_channel
     )
     return actual_submitter, actual_submit_channel
 

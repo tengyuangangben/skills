@@ -119,9 +119,12 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 2. `WPS_SKILL_DATA` 中的元数据（如 `submitter`、`submit_channel`、`_提交人`、`_提交渠道`）
 3. OpenClaw/聊天运行时环境变量（如 `OPENCLAW_USER`、`OPENCLAW_CHANNEL`、`CHAT_PLATFORM`）
 4. 兜底环境变量（`WPS_SUBMITTER` / `WPS_SUBMIT_CHANNEL`）
-5. 最终兜底（提交人=`agent`，提交渠道=`route.key`）
+5. 最终兜底（提交人=`agent`，提交渠道默认 `wecom`）
 
-如果你发现渠道不正确，优先在 OpenClaw 侧传入 `submit_channel` 或设置 `OPENCLAW_CHANNEL`。
+可选覆盖最终兜底渠道：
+
+- 环境变量：`WPS_FALLBACK_SUBMIT_CHANNEL`
+- 路由级配置：`default_submit_channel`
 
 ### 补传附件示例（不新增记录）
 
