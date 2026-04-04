@@ -1,4 +1,5 @@
 {
+  "token": "可选：脚本令牌（优先于环境变量 WPS_AIRSCRIPT_TOKEN）",
   "routes": [
     {
       "key": "reimbursement",
@@ -6,8 +7,10 @@
       "sheet_name": "请替换为报销表名称",
       "aliases": ["报销", "报销登记", "报销表", "日记账"],
       "write_webhook": "请替换为报销录入脚本Webhook",
+      "delete_webhook": "请替换为报销删除脚本Webhook",
       "query_webhook": "请替换为报销查询脚本Webhook",
       "field_query_webhook": "请替换为报销字段查询脚本Webhook",
+      "request_id_field_name": "_请求ID",
       "field_query_args": {},
       "default_notification_mode": "text",
       "default_range_mode": "all",
@@ -22,8 +25,10 @@
       "sheet_name": "请替换为花名册表名称",
       "aliases": ["花名册", "人员", "员工", "通讯录"],
       "write_webhook": "请替换为花名册录入脚本Webhook",
+      "delete_webhook": "请替换为花名册删除脚本Webhook",
       "query_webhook": "请替换为花名册查询脚本Webhook",
       "field_query_webhook": "请替换为花名册字段查询脚本Webhook",
+      "request_id_field_name": "_请求ID",
       "field_query_args": {},
       "default_notification_mode": "text",
       "default_range_mode": "all",

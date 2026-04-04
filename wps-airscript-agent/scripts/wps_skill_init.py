@@ -33,13 +33,15 @@ def ask_yes_no(prompt: str, default_yes: bool = True) -> bool:
 
 def load_map(path: Path) -> Dict[str, Any]:
     if not path.exists():
-        return {"routes": []}
+        return {"token": "", "routes": []}
     with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
-        return {"routes": []}
+        return {"token": "", "routes": []}
     if not isinstance(data.get("routes"), list):
         data["routes"] = []
+    if "token" not in data:
+        data["token"] = ""
     return data
 
 
@@ -57,8 +59,10 @@ def input_route(existing: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     aliases_text = ask("别名（逗号分隔）", ",".join(base.get("aliases", [])))
     aliases = [x.strip() for x in aliases_text.split(",") if x.strip()]
     write_webhook = ask("录入脚本write_webhook", str(base.get("write_webhook", "")), required=True)
+    delete_webhook = ask("删除脚本delete_webhook", str(base.get("delete_webhook", "")))
     query_webhook = ask("查询脚本query_webhook", str(base.get("query_webhook", "")), required=True)
     field_query_webhook = ask("字段查询脚本field_query_webhook", str(base.get("field_query_webhook", "")), required=True)
+    request_id_field_name = ask("请求ID字段名(request_id_field_name)", str(base.get("request_id_field_name", "_请求ID")) or "_请求ID")
     default_notification_mode = ask("默认通知模式", str(base.get("default_notification_mode", "text")) or "text")
     default_range_mode = ask("默认范围模式", str(base.get("default_range_mode", "all")) or "all")
     range_cfg = base.get("range_filter_fields", {}) if isinstance(base.get("range_filter_fields"), dict) else {}
@@ -77,8 +81,10 @@ def input_route(existing: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         "sheet_name": sheet_name,
         "aliases": aliases,
         "write_webhook": write_webhook,
+        "delete_webhook": delete_webhook,
         "query_webhook": query_webhook,
         "field_query_webhook": field_query_webhook,
+        "request_id_field_name": request_id_field_name,
         "field_query_args": field_query_args,
         "default_notification_mode": default_notification_mode,
         "default_range_mode": default_range_mode,
@@ -101,6 +107,8 @@ def upsert_route(routes: List[Dict[str, Any]], route: Dict[str, Any]) -> None:
 def main() -> None:
     map_path = Path(ask("路由配置文件路径", str(DEFAULT_MAP_PATH), required=True))
     data = load_map(map_path)
+    token = ask("脚本令牌token（可留空走环境变量）", str(data.get("token", "")))
+    data["token"] = token
     routes = data.get("routes", [])
     print(f"当前路由数量: {len(routes)}")
     if routes:
@@ -132,7 +140,7 @@ def main() -> None:
     print("路由配置写入完成。")
     print(f"文件路径: {map_path}")
     print("下一步：")
-    print("1) 设置环境变量 WPS_AIRSCRIPT_TOKEN")
+    print("1) 若未配置map中的token，则设置环境变量 WPS_AIRSCRIPT_TOKEN")
     print("2) 执行: python wps_skill_router.py (WPS_SKILL_MODE=setup)")
 
 

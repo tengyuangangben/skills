@@ -94,12 +94,12 @@ npx degit tengyuangangben/skills/wps-airscript-agent ./wps-airscript-agent
 
 ## 安装步骤（最简）
 
-1. 在 WPS 多维表端部署并发布三份脚本（录入/查询/字段配置查询）。
+1. 在 WPS 多维表端部署并发布四份脚本（录入/查询/字段配置查询/删除）。
 2. 从脚本详情页复制 token 与 webhook。
 3. 复制模板配置并填写真实 webhook：
    - `Copy-Item wps_webhook_map.example.json wps_webhook_map.json`
 4. 设置环境变量：
-   - 必需：`WPS_AIRSCRIPT_TOKEN`
+   - 可选：`WPS_AIRSCRIPT_TOKEN`（当 `wps_webhook_map.json` 未配置 `token` 时使用）
    - 可选：`WPS_WEBHOOK_MAP_PATH`、`WPS_SUBMITTER`、`WPS_SUBMIT_CHANNEL`
    - 若不设置 `WPS_WEBHOOK_MAP_PATH`，脚本会按顺序自动查找：
      1) `scripts/wps_webhook_map.json`
@@ -132,8 +132,8 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 为保证写入“实际渠道/实际用户”，当前优先级如下（从高到低）：
 
 1. 显式入参（`submitter` / `submit_channel`）
-2. `WPS_SKILL_DATA` 中的元数据（如 `submitter`、`submit_channel`、`_提交人`、`_提交渠道`）
-3. OpenClaw/聊天运行时环境变量（如 `OPENCLAW_USER`、`OPENCLAW_CHANNEL`、`CHAT_PLATFORM`）
+2. OpenClaw/聊天运行时环境变量（如 `OPENCLAW_CHANNEL`、`OPENCLAW_CHAT_CHANNEL`、`REQUEST_CHANNEL`）
+3. `WPS_SKILL_DATA` 中的元数据（如 `submitter`、`submit_channel`、`_提交人`、`_提交渠道`）
 4. 兜底环境变量（`WPS_SUBMITTER` / `WPS_SUBMIT_CHANNEL`）
 5. 最终兜底（提交人=`agent`，提交渠道默认 `wecom`）
 
@@ -141,6 +141,26 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 
 - 环境变量：`WPS_FALLBACK_SUBMIT_CHANNEL`
 - 路由级配置：`default_submit_channel`
+
+### 删除记录示例（按条件/撤销）
+
+```powershell
+$env:WPS_SKILL_MODE="delete"
+$env:WPS_SKILL_INTENT="花名册"
+$env:WPS_DELETE_FIELD="姓名"
+$env:WPS_DELETE_VALUE="李附件测试"
+$env:WPS_DELETE_RULE="等于"
+python ".\scripts\wps_skill_router.py"
+```
+
+撤销当次录入（按请求ID）：
+
+```powershell
+$env:WPS_SKILL_MODE="delete"
+$env:WPS_SKILL_INTENT="花名册"
+$env:WPS_DELETE_REQUEST_ID="employee_roster-ab12cd34"
+python ".\scripts\wps_skill_router.py"
+```
 
 ### 补传附件示例（不新增记录）
 
@@ -205,6 +225,7 @@ python ".\scripts\wps_skill_router.py"
 1. 禁止把附件原始内容（base64大文本）直接拼进用户对话上下文。
 2. 优先传 `file_path` 或 `file_url`。
 3. 仅在无法获取路径/链接时才传 `file_data`，且必须带 `file_name`。
+4. 默认不做附件内容识别；仅当用户明确提出“识别附件内容/提取附件内容”时才触发识别流程。
 
 推荐输出给 Skill 的附件参数模板：
 

@@ -147,9 +147,10 @@ def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[st
         "REQUESTER_USER_VALUE", "CHAT_USER", "CHAT_USERNAME", "MESSAGE_USER", "SENDER_NAME", "SENDER_ID"
     ])
     dynamic_channel = _env_first([
-        "OPENCLAW_CHANNEL", "OPENCLAW_PLATFORM", "REQUESTER_GROUP_VALUE",
+        "OPENCLAW_CHANNEL", "OPENCLAW_CHAT_CHANNEL", "OPENCLAW_REQUEST_CHANNEL", "OPENCLAW_PLATFORM", "OPENCLAW_SOURCE_CHANNEL",
+        "REQUESTER_GROUP_VALUE", "REQUEST_CHANNEL", "CONVERSATION_CHANNEL", "SOURCE_PLATFORM",
         "CHAT_CHANNEL", "CHAT_PLATFORM", "MESSAGE_CHANNEL", "MESSAGE_PLATFORM", "IM_PLATFORM", "SOURCE_CHANNEL",
-        "CHANNEL", "PLATFORM"
+        "CHANNEL", "PLATFORM", "CHANNEL_TYPE"
     ])
     route_default_channel = _first_non_empty(
         route.get("default_submit_channel"),
@@ -169,8 +170,8 @@ def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[st
     )
     actual_submit_channel = _first_non_empty(
         submit_channel,
-        payload_channel,
         dynamic_channel,
+        payload_channel,
         os.getenv("WPS_SUBMIT_CHANNEL", ""),
         fallback_channel
     )
@@ -197,10 +198,32 @@ def load_webhook_map() -> Dict[str, Any]:
         return json.load(f)
 
 
+def _token_from_mapping(mapping: Dict[str, Any]) -> str:
+    if not isinstance(mapping, dict):
+        return ""
+    for key in ("token", "wps_airscript_token", "airscript_token", "script_token", "airscriptToken"):
+        val = mapping.get(key)
+        if val and str(val).strip():
+            return str(val).strip()
+    cfg = mapping.get("config")
+    if isinstance(cfg, dict):
+        for key in ("token", "wps_airscript_token", "airscript_token", "script_token", "airscriptToken"):
+            val = cfg.get(key)
+            if val and str(val).strip():
+                return str(val).strip()
+    return ""
+
+
 def get_token() -> str:
-    token = os.getenv(TOKEN_ENV, "")
+    token = ""
+    try:
+        token = _token_from_mapping(load_webhook_map())
+    except Exception:
+        token = ""
     if not token:
-        raise ValueError(f"缺少环境变量 {TOKEN_ENV}")
+        token = os.getenv(TOKEN_ENV, "")
+    if not token:
+        raise ValueError(f"缺少脚本令牌，请在 wps_webhook_map.json 配置 token 或设置环境变量 {TOKEN_ENV}")
     return token
 
 
@@ -553,6 +576,41 @@ def update_attachment_record(
         attachment_field: patch_value
     }
     return create_record(intent, patch_data, overwrite_mode=True, key_field=key_field, key_value=key_value)
+
+
+def delete_records(
+    intent: str,
+    delete_field_name: str = "",
+    delete_field_value: str = "",
+    delete_field_rule: str = "等于",
+    query_conditions: Optional[List[Dict[str, Any]]] = None,
+    request_id: str = "",
+    record_ids: Optional[List[str]] = None,
+    max_delete_count: int = 200
+) -> Dict[str, Any]:
+    mapping = load_webhook_map()
+    token = get_token()
+    route = find_route(intent, mapping)
+    delete_webhook = route.get("delete_webhook", "")
+    if not delete_webhook or "请替换" in str(delete_webhook):
+        raise ValueError(f"{route.get('name')} 未配置 delete_webhook")
+    ids = [str(x).strip() for x in (record_ids or []) if str(x).strip()]
+    if not ids and not request_id and not (delete_field_name and delete_field_value):
+        raise ValueError("删除需要提供 record_ids，或 request_id，或 delete_field_name + delete_field_value")
+    argv: Dict[str, Any] = {
+        "sheet_name": route.get("sheet_name"),
+        "table_type": "多维表",
+        "request_type": "delete_record",
+        "delete_field_name": delete_field_name,
+        "delete_field_value": delete_field_value,
+        "delete_field_rule": delete_field_rule,
+        "query_conditions": query_conditions or [],
+        "request_id": request_id,
+        "request_id_field_name": route.get("request_id_field_name", "_请求ID"),
+        "record_ids": ids,
+        "max_delete_count": max(1, int(max_delete_count))
+    }
+    return post_airscript(delete_webhook, argv, token)
 
 
 def get_required_fields(intent: str) -> Dict[str, Any]:
@@ -1007,7 +1065,10 @@ def format_query_result_for_human(result: Dict[str, Any]) -> str:
 def get_setup_status() -> Dict[str, Any]:
     map_path = _resolve_webhook_map_path()
     mapping = load_webhook_map()
-    token = os.getenv(TOKEN_ENV, "")
+    token_from_map = _token_from_mapping(mapping)
+    token_from_env = os.getenv(TOKEN_ENV, "")
+    token = token_from_map or token_from_env
+    token_source = "map" if token_from_map else ("env" if token_from_env else "")
     routes = []
     for route in mapping.get("routes", []):
         routes.append({
@@ -1016,11 +1077,13 @@ def get_setup_status() -> Dict[str, Any]:
             "sheet_name": route.get("sheet_name"),
             "write_webhook_configured": bool(route.get("write_webhook")) and "请替换" not in str(route.get("write_webhook")),
             "query_webhook_configured": bool(route.get("query_webhook")) and "请替换" not in str(route.get("query_webhook")),
-            "field_query_webhook_configured": bool(route.get("field_query_webhook")) and "请替换" not in str(route.get("field_query_webhook"))
+            "field_query_webhook_configured": bool(route.get("field_query_webhook")) and "请替换" not in str(route.get("field_query_webhook")),
+            "delete_webhook_configured": bool(route.get("delete_webhook")) and "请替换" not in str(route.get("delete_webhook"))
         })
     return {
         "token_configured": bool(token),
         "token_env": TOKEN_ENV,
+        "token_source": token_source,
         "map_path": str(map_path),
         "map_exists": map_path.exists(),
         "routes": routes
@@ -1075,6 +1138,15 @@ if __name__ == "__main__":
             attachment_value = json.loads(os.getenv("WPS_UPDATE_ATTACHMENT", "{}"))
             merge_mode = os.getenv("WPS_UPDATE_ATTACHMENT_MODE", "replace")
             print(json.dumps(update_attachment_record(demo_intent, key_field, key_value, attachment_field, attachment_value, merge_mode), ensure_ascii=False, indent=2))
+        elif mode == "delete":
+            delete_field_name = os.getenv("WPS_DELETE_FIELD", "")
+            delete_field_value = os.getenv("WPS_DELETE_VALUE", "")
+            delete_field_rule = os.getenv("WPS_DELETE_RULE", "等于")
+            query_conditions = json.loads(os.getenv("WPS_DELETE_CONDITIONS_JSON", "[]"))
+            request_id = os.getenv("WPS_DELETE_REQUEST_ID", "")
+            record_ids = json.loads(os.getenv("WPS_DELETE_RECORD_IDS_JSON", "[]"))
+            max_delete_count = int(os.getenv("WPS_DELETE_MAX_COUNT", "200") or "200")
+            print(json.dumps(delete_records(demo_intent, delete_field_name, delete_field_value, delete_field_rule, query_conditions, request_id, record_ids, max_delete_count), ensure_ascii=False, indent=2))
         else:
             demo_data = json.loads(os.getenv("WPS_SKILL_DATA", "{}"))
             overwrite_mode = _parse_bool(os.getenv("WPS_OVERWRITE_MODE", "false"), False)
