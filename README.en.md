@@ -63,6 +63,14 @@ If your agent supports local-folder skill installation, point it to `./wps-airsc
   - run `setup` once for health checks
   - review migration notes in `wps-airscript-agent/README.md`
 
+## v1.1.2 Highlights
+
+- Added delete capability (`WPS_SKILL_MODE=delete`) with condition/request-id/record-id support.
+- Added map-first token strategy: read `token` from `wps_webhook_map.json` first, fallback to `WPS_AIRSCRIPT_TOKEN`.
+- Fixed submit-channel priority to prefer OpenClaw runtime channel context.
+- Added attachment append mode (`WPS_UPDATE_ATTACHMENT_MODE=append`) for split-message uploads.
+- Updated OpenClaw guidance: direct-upload attachments by default; recognize content only when explicitly requested.
+
 ## Adding a New Skill
 
 1. Create a new folder at repository root (for example: `new-skill/`).

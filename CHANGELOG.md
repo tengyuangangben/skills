@@ -7,16 +7,22 @@ All notable changes to this repository are documented in this file.
 ### Added
 - Attachment append mode for multi-message uploads: `WPS_UPDATE_ATTACHMENT_MODE=append`.
 - Setup output now includes resolved webhook map path and existence status.
+- Delete capability: `WPS_SKILL_MODE=delete` with condition/request-id/record-id pathways.
+- New delete AirScript file: `scripts/删除脚本.js`.
+- Router initializer now supports `delete_webhook` and `request_id_field_name`.
 
 ### Changed
 - Webhook map path resolution now auto-detects in this order when env is unset:
   - `scripts/wps_webhook_map.json`
   - skill root `wps_webhook_map.json`
   - current working directory `wps_webhook_map.json`
+- Token resolution now prefers `wps_webhook_map.json` top-level `token`, then falls back to `WPS_AIRSCRIPT_TOKEN`.
+- Submit channel priority now prefers OpenClaw runtime channel context over payload/default env fallback.
 
 ### Fixed
 - OpenClaw runtime no longer requires explicit `WPS_WEBHOOK_MAP_PATH` in common skill-layout deployments.
 - Split-message attachment uploads no longer lose earlier files when append mode is enabled.
+- OpenClaw multi-channel attachment workflows now default to direct upload, avoiding unnecessary content-recognition token usage unless explicitly requested.
 
 ## [v1.1.1] - 2026-04-04
 
