@@ -268,7 +268,9 @@ def create_record(
     user_data: Dict[str, Any],
     submitter: str = "",
     submit_channel: str = "",
-    overwrite_mode: bool = False
+    overwrite_mode: bool = False,
+    key_field: str = "",
+    key_value: Any = None
 ) -> Dict[str, Any]:
     mapping = load_webhook_map()
     token = get_token()
@@ -276,8 +278,18 @@ def create_record(
     write_webhook = route.get("write_webhook", "")
     if not write_webhook or "请替换" in write_webhook:
         raise ValueError(f"{route.get('name')} 未配置 write_webhook")
+    payload_data: Dict[str, Any] = dict(user_data or {})
+    if overwrite_mode and key_field:
+        if key_value not in (None, ""):
+            payload_data[key_field] = key_value
+        if key_field in payload_data:
+            ordered_data: Dict[str, Any] = {key_field: payload_data[key_field]}
+            for k, v in payload_data.items():
+                if k != key_field:
+                    ordered_data[k] = v
+            payload_data = ordered_data
     field_config = get_fields_config(route, token)
-    fields = build_fields_payload(field_config, user_data)
+    fields = build_fields_payload(field_config, payload_data)
     actual_submitter = submitter or os.getenv("WPS_SUBMITTER", "agent")
     actual_submit_channel = submit_channel or os.getenv("WPS_SUBMIT_CHANNEL", route.get("key"))
     argv = {
@@ -302,11 +314,10 @@ def update_attachment_record(intent: str, key_field: str, key_value: Any, attach
         raise ValueError("缺少 WPS_UPDATE_KEY_VALUE")
     if not attachment_field:
         raise ValueError("缺少 WPS_UPDATE_ATTACHMENT_FIELD")
-    ordered_user_data: Dict[str, Any] = {
-        key_field: key_value,
+    patch_data: Dict[str, Any] = {
         attachment_field: attachment_value
     }
-    return create_record(intent, ordered_user_data, overwrite_mode=True)
+    return create_record(intent, patch_data, overwrite_mode=True, key_field=key_field, key_value=key_value)
 
 
 def get_required_fields(intent: str) -> Dict[str, Any]:
@@ -702,6 +713,9 @@ if __name__ == "__main__":
             print(json.dumps(update_attachment_record(demo_intent, key_field, key_value, attachment_field, attachment_value), ensure_ascii=False, indent=2))
         else:
             demo_data = json.loads(os.getenv("WPS_SKILL_DATA", "{}"))
-            print(json.dumps(create_record(demo_intent, demo_data), ensure_ascii=False, indent=2))
+            overwrite_mode = _parse_bool(os.getenv("WPS_OVERWRITE_MODE", "false"), False)
+            key_field = os.getenv("WPS_KEY_FIELD", "")
+            key_value = os.getenv("WPS_KEY_VALUE", "")
+            print(json.dumps(create_record(demo_intent, demo_data, overwrite_mode=overwrite_mode, key_field=key_field, key_value=key_value), ensure_ascii=False, indent=2))
     except Exception as e:
         print(json.dumps({"state": "error", "message": str(e)}, ensure_ascii=False, indent=2))
