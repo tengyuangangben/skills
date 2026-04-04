@@ -9,8 +9,9 @@
 
 ## 版本信息
 
-- 当前版本：`v1.1.0`
-- Release：`https://github.com/tengyuangangben/skills/releases/tag/v1.1.0`
+- 当前版本：`v1.1.1`
+- Release：`https://github.com/tengyuangangben/skills/releases/tag/v1.1.1`
+- 版本历史：`../../CHANGELOG.md`
 
 ## 从 v1.0.0 升级到 v1.1.0
 
@@ -25,6 +26,20 @@
 - 查询优先单次返回，减少多次 webhook 调用。
 - 附件上传兼容性更强（避免灰色问号）。
 - 新增 `update_attachment`，支持已存在记录补传附件。
+
+## 从 v1.1.0 升级到 v1.1.1
+
+1. 更新 `scripts/wps_skill_router.py`、`scripts/录入脚本.js` 与 `docs/安装与调用说明.md`。
+2. 将新版 `录入脚本.js` 重新发布到 WPS 多维表脚本端。
+3. 若需新增业务字段，必须显式设置：
+   - `WPS_ALLOW_NEW_FIELDS=true`
+   - 可选 `WPS_NEW_FIELDS_WHITELIST=字段A,字段B`
+
+升级收益：
+
+- 默认严格字段写入，避免误新增字段污染表结构。
+- 提交人/提交渠道优先采用运行时真实来源。
+- OpenClaw 自动调用策略补充“新增字段需用户明确授权”规则。
 
 ## 给 Agent 的安装指引（重点）
 

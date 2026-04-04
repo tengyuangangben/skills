@@ -3,6 +3,12 @@
 This repository is a **central collection of installable skills** for agents (such as OpenClaw).  
 Each skill is maintained in its own folder with an independent `README.md`.
 
+## Version
+
+- Current stable release: `v1.1.1`
+- Latest release page: `https://github.com/tengyuangangben/skills/releases/tag/v1.1.1`
+- Change history: `CHANGELOG.md`
+
 ## Repository Structure
 
 - Repository-level files:

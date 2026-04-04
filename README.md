@@ -5,14 +5,15 @@
 
 ## 版本信息
 
-- 当前稳定版本：`v1.1.0`
-- 最新发布页：`https://github.com/tengyuangangben/skills/releases/tag/v1.1.0`
-- 说明：`v1.0.0` 已标记为被 `v1.1.0` 取代（superseded）
+- 当前稳定版本：`v1.1.1`
+- 最新发布页：`https://github.com/tengyuangangben/skills/releases/tag/v1.1.1`
+- 版本历史：见 `CHANGELOG.md`
 
 ## 升级记录（仓库级）
 
 | 版本 | 说明 |
 |---|---|
+| v1.1.1 | 严格字段策略、显式授权新增字段、提交人/渠道动态优先级、安装文档与自动调用策略完善 |
 | v1.1.0 | 降低 token 消耗、优化附件兼容、支持补传附件、增强 OpenClaw 调用规则 |
 | v1.0.0 | 首个稳定可发布版本 |
 
