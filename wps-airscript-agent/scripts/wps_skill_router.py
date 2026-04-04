@@ -468,6 +468,61 @@ def update_attachment_record(
 
 
 def get_required_fields(intent: str) -> Dict[str, Any]:
+    def pick(obj: Dict[str, Any], keys: List[str], default: Any = None) -> Any:
+        for k in keys:
+            if k in obj and obj.get(k) is not None:
+                return obj.get(k)
+        return default
+
+    def bool_from(v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if v is None:
+            return False
+        s = str(v).strip().lower()
+        return s in ("1", "true", "yes", "y", "是")
+
+    def extract_options(v: Any) -> List[str]:
+        out: List[str] = []
+        if not isinstance(v, list):
+            return out
+        for item in v:
+            if isinstance(item, dict):
+                name = str(item.get("name") or item.get("Name") or item.get("text") or item.get("value") or "").strip()
+                if name:
+                    out.append(name)
+            else:
+                text = str(item).strip()
+                if text:
+                    out.append(text)
+        return out
+
+    def field_view(f: Dict[str, Any]) -> Dict[str, Any]:
+        name = str(pick(f, ["name", "Name"], "")).strip()
+        field_type = str(pick(f, ["type", "Type"], "")).strip()
+        field_format = TYPE_TO_FORMAT.get(field_type, "文本")
+        required = bool_from(pick(f, ["required", "Required"], False))
+        is_primary = bool_from(pick(f, ["isPrimary", "IsPrimary"], False))
+        options = extract_options(pick(f, ["items", "Items"], []))
+        desc_parts: List[str] = []
+        if field_type in ("CreateTime", "CreatedBy", "AutoNumber", "Formula", "Lookup"):
+            desc_parts.append("自动生成")
+        if is_primary:
+            desc_parts.append("唯一")
+        if required:
+            desc_parts.append("必填")
+        if options:
+            desc_parts.append(" / ".join(options))
+        return {
+            "name": name,
+            "type": field_type,
+            "format": field_format,
+            "required": required,
+            "is_primary": is_primary,
+            "options": options,
+            "description": "；".join(desc_parts)
+        }
+
     mapping = load_webhook_map()
     token = get_token()
     route = find_route(intent, mapping)
@@ -478,7 +533,7 @@ def get_required_fields(intent: str) -> Dict[str, Any]:
         "sheet_name": route.get("sheet_name"),
         "recommended_range_mode": route.get("default_range_mode", "all"),
         "range_filter_fields": route.get("range_filter_fields", {}),
-        "fields": [{"name": f.get("name"), "type": f.get("type")} for f in field_config]
+        "fields": [field_view(f) for f in field_config]
     }
 
 
