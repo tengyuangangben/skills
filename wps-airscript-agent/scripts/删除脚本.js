@@ -9,7 +9,7 @@ const query_conditions = Array.isArray(Context.argv.query_conditions) ? Context.
 const request_id = Context.argv.request_id || ""
 const request_id_field_name = Context.argv.request_id_field_name || "_请求ID"
 const max_delete_count = parseInt(Context.argv.max_delete_count || 200, 10) || 200
-const record_ids = Array.isArray(Context.argv.record_ids) ? Context.argv.record_ids.map(x => String(x).trim()).filter(Boolean) : []
+const record_ids = Array.isArray(Context.argv.record_ids) ? Context.argv.record_ids.map(x => normalizeRecordId(x)).filter(Boolean) : []
 
 if (request_type != "delete_record") {
   return { "respData": { "state": "error" }, "msg": "仅支持 delete_record", "deleted_count": 0, "deleted_ids": [] }
@@ -27,7 +27,7 @@ if (record_ids.length > 0) {
 } else {
   const recs = getAllRecords(sht)
   const filtered = recs.filter(rec => matchRecord(rec))
-  deleteIds = filtered.map(rec => rec.id).slice(0, max_delete_count)
+  deleteIds = filtered.map(rec => normalizeRecordId(rec && (rec.id != null ? rec.id : (rec.Id != null ? rec.Id : rec.recordId)))).filter(Boolean).slice(0, max_delete_count)
 }
 
 if (deleteIds.length == 0) {
@@ -142,4 +142,14 @@ function getShtWithName(name) {
     }
   }
   return sheet
+}
+
+function normalizeRecordId(v) {
+  if (v == null) return ""
+  if (typeof v == "string" || typeof v == "number" || typeof v == "boolean") return String(v).trim()
+  if (typeof v == "object") {
+    const cand = v.id != null ? v.id : (v.Id != null ? v.Id : (v.recordId != null ? v.recordId : (v.value != null ? v.value : (v.text != null ? v.text : ""))))
+    return cand == null ? "" : String(cand).trim()
+  }
+  return String(v).trim()
 }
