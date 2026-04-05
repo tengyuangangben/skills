@@ -646,6 +646,22 @@ function deleteRecords(sht, ids) {
   })
   return deleted || []
 }
+function normalizeComparableValue(v) {
+  if (v == null) return ""
+  if (typeof v == "string" || typeof v == "number" || typeof v == "boolean") {
+    return String(v).trim()
+  }
+  if (Array.isArray(v)) {
+    return v.map(x => normalizeComparableValue(x)).join("|||")
+  }
+  if (typeof v == "object") {
+    if (v.text != null) return String(v.text).trim()
+    if (v.value != null) return String(v.value).trim()
+    if (v.name != null) return String(v.name).trim()
+    if (Array.isArray(v.options)) return v.options.map(x => normalizeComparableValue(x)).join("|||")
+  }
+  return String(v).trim()
+}
 function addRecords(sht, recs) {
   let update_rec_arr = [];
   if (overwrite_mode == "是") {
@@ -654,14 +670,15 @@ function addRecords(sht, recs) {
     let field = Sheets(shtName).FieldDescriptors(`@${keyName}`)
     let fieldIsAutoNumber = false
     if (field.Type == "AutoNumber") fieldIsAutoNumber = true
-    let keys = Array.from(recs).map(item => fieldIsAutoNumber ? item.fields[keyName].toString().padStart(6, '0') : item.fields[keyName])
+    let keys = Array.from(recs).map(item => fieldIsAutoNumber ? item.fields[keyName].toString().padStart(6, '0') : normalizeComparableValue(item.fields[keyName]))
     let filter_recs = getAllRecordsWithFilter2(sht, keyName, keys)
 
 
     // 遍历 filter_recs，检查是否在 recs 中
     if (filter_recs[0]) {
       Array.from(filter_recs).forEach(filterRec => {
-        let matchIndex = Array.from(recs).findIndex(rec => rec.fields[keyName] === filterRec.fields[keyName]);
+        const filterKey = normalizeComparableValue(filterRec.fields[keyName])
+        let matchIndex = Array.from(recs).findIndex(rec => normalizeComparableValue(rec.fields[keyName]) === filterKey);
         if (matchIndex !== -1) {
           // 添加 `id` 属性并推送到 update_rec_arr
           let matchedRec = { ...recs[matchIndex], id: filterRec.id };
