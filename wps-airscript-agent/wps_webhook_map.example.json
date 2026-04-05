@@ -8,7 +8,9 @@
     "_comment_require_confirm_submit": "true=create写入必须带确认标记（_confirm_submit=true）",
     "require_confirm_submit": true,
     "_comment_forbid_attachment_ocr_by_default": "true=默认禁止附件OCR/解析结果写入；仅用户明确授权后放开",
-    "forbid_attachment_ocr_by_default": true
+    "forbid_attachment_ocr_by_default": true,
+    "_comment_allow_id_as_submitter": "false=提交人优先使用用户名/昵称；true=允许使用OpenID/用户ID作为提交人",
+    "allow_id_as_submitter": false
   },
   "routes": [
     {

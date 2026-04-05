@@ -172,6 +172,7 @@ OpenClaw 调用强制要求：
 - `require_submitter`
 - `require_confirm_submit`
 - `forbid_attachment_ocr_by_default`
+- `allow_id_as_submitter`（默认 `false`，建议保持 false，优先写入用户名而非 OpenID）
 
 可选覆盖最终兜底渠道：
 

@@ -216,6 +216,33 @@ def _submitter_from_context_env() -> str:
     return ""
 
 
+def _looks_like_platform_user_id(text: str) -> bool:
+    s = str(text or "").strip()
+    if not s:
+        return False
+    low = s.lower()
+    if low.startswith(("ou_", "on_", "openid_", "unionid_", "uid_", "wxid_", "user_")):
+        return True
+    if "@" in s or " " in s:
+        return False
+    if len(s) >= 16 and any(ch.isalpha() for ch in s) and any(ch.isdigit() for ch in s):
+        return True
+    return False
+
+
+def _first_human_like(*values: Any) -> str:
+    for v in values:
+        if v is None:
+            continue
+        s = str(v).strip()
+        if not s:
+            continue
+        if _looks_like_platform_user_id(s):
+            continue
+        return s
+    return ""
+
+
 def _resolve_webhook_map_path() -> Path:
     env_path = str(os.getenv(MAP_ENV, "")).strip()
     if env_path:
@@ -237,7 +264,7 @@ def _resolve_webhook_map_path() -> Path:
     return candidates[0]
 
 
-def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[str, Any], route: Dict[str, Any]) -> Tuple[str, str, str, str]:
+def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[str, Any], route: Dict[str, Any], allow_id_as_submitter: bool = False) -> Tuple[str, str, str, str]:
     payload = user_data or {}
     payload_submitter = _first_non_empty(
         payload.get("submitter"),
@@ -255,23 +282,29 @@ def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[st
         payload.get("source_channel"),
         payload.get("platform")
     )
-    dynamic_submitter = _first_non_empty(
-        _env_first([
-            "OPENCLAW_SUBMITTER", "OPENCLAW_USER", "OPENCLAW_USERNAME", "OPENCLAW_NICKNAME",
-            "OPENCLAW_REQUEST_USER", "OPENCLAW_REQUEST_USERNAME", "OPENCLAW_REQUEST_NICKNAME",
-            "OPENCLAW_SENDER_NAME", "OPENCLAW_SENDER_ID", "OPENCLAW_AUTHOR", "OPENCLAW_AUTHOR_NAME",
-            "REQUESTER_USER_VALUE", "REQUESTER_NAME", "REQUESTER_USERNAME", "REQUESTER_NICKNAME",
-            "CHAT_USER", "CHAT_USERNAME", "CHAT_NICKNAME", "MESSAGE_USER", "MESSAGE_USERNAME",
-            "SENDER_NAME", "SENDER_ID", "FROM_USER", "FROM_USERNAME", "USER_NAME", "USERNAME", "USER"
-        ]),
-        _submitter_from_context_env()
-    )
     dynamic_channel = _env_first([
         "OPENCLAW_CHANNEL", "OPENCLAW_CHAT_CHANNEL", "OPENCLAW_REQUEST_CHANNEL", "OPENCLAW_PLATFORM", "OPENCLAW_SOURCE_CHANNEL",
         "REQUESTER_GROUP_VALUE", "REQUEST_CHANNEL", "CONVERSATION_CHANNEL", "SOURCE_PLATFORM",
         "CHAT_CHANNEL", "CHAT_PLATFORM", "MESSAGE_CHANNEL", "MESSAGE_PLATFORM", "IM_PLATFORM", "SOURCE_CHANNEL",
         "CHANNEL", "PLATFORM", "CHANNEL_TYPE"
     ])
+    context_submitter = _submitter_from_context_env()
+    runtime_submitter_human = _first_human_like(
+        _env_first([
+            "OPENCLAW_SUBMITTER", "OPENCLAW_NICKNAME", "OPENCLAW_USERNAME",
+            "OPENCLAW_REQUEST_USERNAME", "OPENCLAW_REQUEST_NICKNAME",
+            "OPENCLAW_SENDER_NAME", "OPENCLAW_AUTHOR_NAME", "OPENCLAW_AUTHOR",
+            "REQUESTER_NAME", "REQUESTER_USERNAME", "REQUESTER_NICKNAME",
+            "CHAT_USERNAME", "CHAT_NICKNAME", "MESSAGE_USERNAME",
+            "SENDER_NAME", "FROM_USERNAME", "USER_NAME", "USERNAME", "USER"
+        ]),
+        context_submitter
+    )
+    runtime_submitter_id = _env_first([
+        "OPENCLAW_USER", "OPENCLAW_REQUEST_USER", "OPENCLAW_SENDER_ID",
+        "REQUESTER_USER_VALUE", "CHAT_USER", "MESSAGE_USER", "SENDER_ID", "FROM_USER"
+    ])
+    dynamic_submitter = _first_non_empty(runtime_submitter_human, runtime_submitter_id if allow_id_as_submitter else "")
     route_default_channel = _first_non_empty(
         route.get("default_submit_channel"),
         route.get("default_channel")
@@ -684,7 +717,8 @@ def create_record(
         key_items = [x for x in one_record if isinstance(x, dict) and x.get("field_name") == key_field]
         if key_items:
             fields[0] = key_items + [x for x in one_record if not (isinstance(x, dict) and x.get("field_name") == key_field)]
-    actual_submitter, actual_submit_channel, submitter_source, submit_channel_source = _resolve_submit_meta(submitter, submit_channel, payload_data, route)
+    allow_id_as_submitter = _cfg_bool(mapping, "allow_id_as_submitter", "WPS_ALLOW_ID_AS_SUBMITTER", False)
+    actual_submitter, actual_submit_channel, submitter_source, submit_channel_source = _resolve_submit_meta(submitter, submit_channel, payload_data, route, allow_id_as_submitter)
     require_submit_channel = _cfg_bool(mapping, "require_submit_channel", "WPS_REQUIRE_SUBMIT_CHANNEL", False)
     require_submitter = _cfg_bool(mapping, "require_submitter", "WPS_REQUIRE_SUBMITTER", False)
     if require_submit_channel and submit_channel_source in ("env_default", "fallback_default"):
@@ -1091,12 +1125,17 @@ def _parse_bool(v: Any, default: bool = False) -> bool:
 def _has_attachment_recognition_payload(obj: Any) -> bool:
     suspicious_keys = {
         "ocr_text", "ocr", "recognized_text", "parsed_text", "extract_text", "extracted_text",
-        "summary", "analysis", "content_text", "text_content"
+        "summary", "analysis", "content_text", "text_content",
+        "ocr_result", "recognize_result", "extract_result", "parsed_result",
+        "识别结果", "ocr结果", "提取结果", "解析结果", "附件识别", "附件解析", "文本提取", "全文识别"
     }
+    suspicious_fragments = ("ocr", "recognize", "recognition", "extract", "parsed", "parse", "summary", "analysis", "识别", "提取", "解析", "摘要", "全文")
     if isinstance(obj, dict):
         for k, v in obj.items():
             key = str(k).strip().lower()
             if key in suspicious_keys:
+                return True
+            if any(frag in key for frag in suspicious_fragments):
                 return True
             if _has_attachment_recognition_payload(v):
                 return True
