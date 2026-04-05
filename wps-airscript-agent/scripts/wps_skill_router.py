@@ -116,6 +116,28 @@ def _first_non_empty(*values: Any) -> str:
     return ""
 
 
+def _field_name_value(cfg: Dict[str, Any]) -> str:
+    if not isinstance(cfg, dict):
+        return ""
+    for k in ("name", "Name", "field_name", "fieldName", "title", "label", "display_name", "displayName", "text", "value"):
+        if k in cfg and cfg.get(k) is not None:
+            text = str(cfg.get(k)).strip()
+            if text:
+                return text
+    return ""
+
+
+def _field_type_value(cfg: Dict[str, Any]) -> str:
+    if not isinstance(cfg, dict):
+        return ""
+    for k in ("type", "Type", "field_type", "fieldType", "data_type", "dataType"):
+        if k in cfg and cfg.get(k) is not None:
+            text = str(cfg.get(k)).strip()
+            if text:
+                return text
+    return ""
+
+
 def _env_first(names: List[str]) -> str:
     for name in names:
         v = os.getenv(name, "")
@@ -304,10 +326,10 @@ def get_fields_config(route: Dict[str, Any], token: str) -> List[Dict[str, Any]]
     if not resp_data:
         resp_data = ((((result or {}).get("data") or {}).get("result") or {}).get("respData") or {})
     fields = (resp_data.get("fields")) or []
-    fields = [f for f in fields if isinstance(f, dict) and (f.get("name") or f.get("Name") or f.get("type") or f.get("Type"))]
+    fields = [f for f in fields if isinstance(f, dict) and (_field_name_value(f) or _field_type_value(f))]
     if not fields:
         raw_fields = (resp_data.get("raw_fields")) or []
-        fields = [f for f in raw_fields if isinstance(f, dict) and (f.get("name") or f.get("Name") or f.get("type") or f.get("Type"))]
+        fields = [f for f in raw_fields if isinstance(f, dict) and (_field_name_value(f) or _field_type_value(f))]
     if not fields:
         raise ValueError(f"{route.get('name')} 未返回字段配置")
     return fields
@@ -315,10 +337,10 @@ def get_fields_config(route: Dict[str, Any], token: str) -> List[Dict[str, Any]]
 
 def build_fields_payload(field_config: List[Dict[str, Any]], user_data: Dict[str, Any]) -> List[List[Dict[str, Any]]]:
     def get_field_name(cfg: Dict[str, Any]) -> str:
-        return str(cfg.get("name") or cfg.get("Name") or "")
+        return _field_name_value(cfg)
 
     def get_field_type(cfg: Dict[str, Any]) -> str:
-        return str(cfg.get("type") or cfg.get("Type") or "MultiLineText")
+        return _field_type_value(cfg) or "MultiLineText"
 
     def file_to_data_uri(file_path: str) -> str:
         path = Path(file_path)
@@ -492,7 +514,7 @@ def _split_multi_select_value(v: Any) -> List[str]:
 def _validate_user_data(field_config: List[Dict[str, Any]], user_data: Dict[str, Any], enforce_required: bool = True) -> None:
     cfg_by_name: Dict[str, Dict[str, Any]] = {}
     for cfg in field_config:
-        name = str(_pick_field_attr(cfg, ["name", "Name"], "")).strip()
+        name = _field_name_value(cfg)
         if name:
             cfg_by_name[name] = cfg
 
@@ -748,8 +770,8 @@ def get_required_fields(intent: str) -> Dict[str, Any]:
         return out
 
     def field_view(f: Dict[str, Any]) -> Dict[str, Any]:
-        name = str(pick(f, ["name", "Name"], "")).strip()
-        field_type = str(pick(f, ["type", "Type"], "")).strip()
+        name = _field_name_value(f)
+        field_type = _field_type_value(f)
         field_format = TYPE_TO_FORMAT.get(field_type, "文本")
         required = bool_from(pick(f, ["required", "Required"], False))
         is_primary = bool_from(pick(f, ["isPrimary", "IsPrimary"], False))
@@ -1076,9 +1098,9 @@ def query_records_enhanced(
             route = find_route(intent, mapping)
             fields_cfg = get_fields_config(route, token)
             attachment_names = {
-                str(item.get("name") or item.get("Name"))
+                _field_name_value(item)
                 for item in fields_cfg
-                if str(item.get("type") or item.get("Type") or "") == "Attachment" and (item.get("name") or item.get("Name"))
+                if _field_type_value(item) == "Attachment" and _field_name_value(item)
             }
             if attachment_names:
                 cleaned_rows: List[Dict[str, Any]] = []
@@ -1118,8 +1140,8 @@ def query_records_enhanced(
         fields_cfg = get_fields_config(route, token)
         filtered_cfg = fields_cfg
         if not include_attachment_fields:
-            filtered_cfg = [item for item in fields_cfg if str(item.get("type") or item.get("Type") or "") != "Attachment"]
-        fields = [str(item.get("name") or item.get("Name")) for item in filtered_cfg if (item.get("name") or item.get("Name"))]
+            filtered_cfg = [item for item in fields_cfg if _field_type_value(item) != "Attachment"]
+        fields = [_field_name_value(item) for item in filtered_cfg if _field_name_value(item)]
     elif return_fields:
         fields = return_fields
     else:
