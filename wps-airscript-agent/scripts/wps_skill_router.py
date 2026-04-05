@@ -11,6 +11,7 @@ import requests
 
 
 TOKEN_ENV = "WPS_AIRSCRIPT_TOKEN"
+MAP_ENV = "WPS_WEBHOOK_MAP_PATH"
 
 
 def _load_json_from_response(resp: requests.Response) -> Any:
