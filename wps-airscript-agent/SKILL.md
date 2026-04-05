@@ -1,6 +1,7 @@
 ---
 name: wps-airscript-agent
 description: 面向WPS多维表的通用录入与查询技能。支持按业务意图自动路由Webhook、动态获取字段并执行录入/查询。
+version: v2.0.0
 ---
 
 # WPS AirScript Agent Skill
