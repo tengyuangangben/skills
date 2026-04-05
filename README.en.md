@@ -5,8 +5,8 @@ Each skill is maintained in its own folder with an independent `README.md`.
 
 ## Version
 
-- Current stable release: `v1.1.2`
-- Latest release page: `https://github.com/tengyuangangben/skills/releases/tag/v1.1.2`
+- Current stable release: `v2.0.0`
+- Latest release page: `https://github.com/tengyuangangben/skills/releases/tag/v2.0.0`
 - Change history: `CHANGELOG.md`
 
 ## Repository Structure
@@ -56,20 +56,19 @@ If your agent supports local-folder skill installation, point it to `./wps-airsc
 
 ## Upgrade Path
 
-- From `v1.0.0`: upgrade to `v1.1.0`, then to `v1.1.2`
-- From `v1.1.0` or `v1.1.1`: upgrade directly to `v1.1.2`
+- From `v1.0.0`: upgrade to `v1.1.0`, then to `v2.0.0`
+- From `v1.1.0`, `v1.1.1`, or `v1.1.2`: upgrade directly to `v2.0.0`
 - After upgrading:
   - republish WPS-side `录入脚本.js`
   - run `setup` once for health checks
   - review migration notes in `wps-airscript-agent/README.md`
 
-## v1.1.2 Highlights
+## v2.0.0 Highlights
 
-- Added delete capability (`WPS_SKILL_MODE=delete`) with condition/request-id/record-id support.
-- Added map-first token strategy: read `token` from `wps_webhook_map.json` first, fallback to `WPS_AIRSCRIPT_TOKEN`.
-- Fixed submit-channel priority to prefer OpenClaw runtime channel context.
-- Added attachment append mode (`WPS_UPDATE_ATTACHMENT_MODE=append`) for split-message uploads.
-- Updated OpenClaw guidance: direct-upload attachments by default; recognize content only when explicitly requested.
+- Added config-level safety switches in `wps_webhook_map.json` (`require_submit_channel`, `require_submitter`, `require_confirm_submit`, `forbid_attachment_ocr_by_default`).
+- Condition-delete now resolves record IDs via query first, then executes delete with normalized string IDs.
+- `update_attachment` and `update` now pass through `submitter/submit_channel` to avoid fallback defaults.
+- Field-query parsing now accepts additional key styles (`field_name/label/fieldType/data_type`) for better compatibility.
 
 ## Adding a New Skill
 
