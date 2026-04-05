@@ -9,8 +9,8 @@
 
 ## 版本信息
 
-- 当前版本：`v1.1.2`
-- Release：`https://github.com/tengyuangangben/skills/releases/tag/v1.1.2`
+- 当前版本：`v2.0.0`
+- Release：`https://github.com/tengyuangangben/skills/releases/tag/v2.0.0`
 - 版本历史：`../../CHANGELOG.md`
 
 ## 从 v1.0.0 升级到 v1.1.0
@@ -52,6 +52,22 @@
 
 - `wps_webhook_map.json` 默认路径识别更稳，不再必须手动传路径。
 - `update_attachment` 支持 append 合并，避免多消息附件后写覆盖前写。
+
+## 从 v1.1.2 升级到 v2.0.0
+
+1. 更新 `scripts/wps_skill_router.py`、`wps_webhook_map.example.json`、`docs/安装与调用说明.md`。
+2. 将 `wps_webhook_map.json` 顶层补充 `config` 开关（可替代环境变量）：
+   - `require_submit_channel`
+   - `require_submitter`
+   - `require_confirm_submit`
+   - `forbid_attachment_ocr_by_default`
+3. 建议将 `require_submit_channel` 与 `require_submitter` 设为 `true`，避免回落默认提交人/渠道。
+
+升级收益：
+
+- 删除流程改为先查询ID再删除，规避WPS端记录对象差异导致的ID类型异常。
+- `update_attachment/update` 透传 `submitter/submit_channel`，来源归因更稳定。
+- 关键安全开关支持配置文件集中管理，用户可控性更高。
 
 ## 给 Agent 的安装指引（重点）
 

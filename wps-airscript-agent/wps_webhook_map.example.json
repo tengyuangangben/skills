@@ -1,9 +1,13 @@
 {
   "token": "可选：脚本令牌（优先于环境变量 WPS_AIRSCRIPT_TOKEN）",
   "config": {
+    "_comment_require_submit_channel": "true=要求提交渠道必须来自显式参数/运行时上下文；不允许回落默认渠道",
     "require_submit_channel": true,
+    "_comment_require_submitter": "true=要求提交人必须来自显式参数/运行时上下文；不允许回落agent",
     "require_submitter": true,
+    "_comment_require_confirm_submit": "true=create写入必须带确认标记（_confirm_submit=true）",
     "require_confirm_submit": true,
+    "_comment_forbid_attachment_ocr_by_default": "true=默认禁止附件OCR/解析结果写入；仅用户明确授权后放开",
     "forbid_attachment_ocr_by_default": true
   },
   "routes": [

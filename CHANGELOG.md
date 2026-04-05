@@ -2,6 +2,26 @@
 
 All notable changes to this repository are documented in this file.
 
+## [v2.0.0] - 2026-04-05
+
+### Added
+- Config-level safety switches in `wps_webhook_map.json` top-level `config`:
+  - `require_submit_channel`
+  - `require_submitter`
+  - `require_confirm_submit`
+  - `forbid_attachment_ocr_by_default`
+- Example config now includes inline explanatory comment fields for each switch.
+
+### Changed
+- Delete-by-condition flow now resolves matched record IDs via query path first, then calls delete with normalized string IDs.
+- `update_attachment` and `update` flows now support explicit `submitter/submit_channel` pass-through.
+- Field config parsing is more tolerant of alternative field keys (`field_name/label/fieldType/data_type`).
+
+### Fixed
+- Prevented submitter/channel regressions in update flows that could fallback to defaults.
+- Hardened record-id normalization for mixed object/string id shapes.
+- Improved Windows-side response decoding stability for field-query payloads.
+
 ## [v1.1.2] - 2026-04-04
 
 ### Added
