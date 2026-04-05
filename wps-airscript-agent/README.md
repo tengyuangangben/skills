@@ -146,7 +146,7 @@ OpenClaw 调用强制要求：
 - 禁止省略 `submit_channel`，否则可能回落到默认渠道（`wecom`）。
 - 建议启用强校验：
   - `WPS_REQUIRE_SUBMIT_CHANNEL=true`
-  - 可选：`WPS_REQUIRE_SUBMITTER=true`
+  - 建议同时开启：`WPS_REQUIRE_SUBMITTER=true`
   - `WPS_REQUIRE_CONFIRM_SUBMIT=true`
 
 可选覆盖最终兜底渠道：
