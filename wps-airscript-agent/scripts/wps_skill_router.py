@@ -146,6 +146,54 @@ def _env_first(names: List[str]) -> str:
     return ""
 
 
+def _extract_submitter_from_context_obj(obj: Any) -> str:
+    if not isinstance(obj, dict):
+        return ""
+    def pick(d: Dict[str, Any]) -> str:
+        return _first_non_empty(
+            d.get("submitter"), d.get("username"), d.get("user_name"), d.get("userName"),
+            d.get("nickname"), d.get("display_name"), d.get("displayName"),
+            d.get("name"), d.get("sender_name"), d.get("from_name"),
+            d.get("author"), d.get("requester"), d.get("user_id"), d.get("userId")
+        )
+    direct = pick(obj)
+    if direct:
+        return direct
+    for key in ("user", "sender", "from", "author", "requester", "operator", "member", "meta"):
+        node = obj.get(key)
+        if isinstance(node, dict):
+            v = pick(node)
+            if v:
+                return v
+    return ""
+
+
+def _submitter_from_context_env() -> str:
+    for name in (
+        "OPENCLAW_CONTEXT", "OPENCLAW_RUNTIME_CONTEXT", "OPENCLAW_REQUEST_CONTEXT",
+        "REQUEST_CONTEXT", "MESSAGE_CONTEXT", "CHAT_CONTEXT"
+    ):
+        text = str(os.getenv(name, "")).strip()
+        if not text:
+            continue
+        if not (text.startswith("{") or text.startswith("[")):
+            continue
+        try:
+            data = json.loads(text)
+        except Exception:
+            continue
+        if isinstance(data, list):
+            for item in data:
+                v = _extract_submitter_from_context_obj(item)
+                if v:
+                    return v
+        else:
+            v = _extract_submitter_from_context_obj(data)
+            if v:
+                return v
+    return ""
+
+
 def _resolve_webhook_map_path() -> Path:
     env_path = str(os.getenv(MAP_ENV, "")).strip()
     if env_path:
@@ -185,10 +233,17 @@ def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[st
         payload.get("source_channel"),
         payload.get("platform")
     )
-    dynamic_submitter = _env_first([
-        "OPENCLAW_SUBMITTER", "OPENCLAW_USER", "OPENCLAW_USERNAME", "OPENCLAW_NICKNAME",
-        "REQUESTER_USER_VALUE", "CHAT_USER", "CHAT_USERNAME", "MESSAGE_USER", "SENDER_NAME", "SENDER_ID"
-    ])
+    dynamic_submitter = _first_non_empty(
+        _env_first([
+            "OPENCLAW_SUBMITTER", "OPENCLAW_USER", "OPENCLAW_USERNAME", "OPENCLAW_NICKNAME",
+            "OPENCLAW_REQUEST_USER", "OPENCLAW_REQUEST_USERNAME", "OPENCLAW_REQUEST_NICKNAME",
+            "OPENCLAW_SENDER_NAME", "OPENCLAW_SENDER_ID", "OPENCLAW_AUTHOR", "OPENCLAW_AUTHOR_NAME",
+            "REQUESTER_USER_VALUE", "REQUESTER_NAME", "REQUESTER_USERNAME", "REQUESTER_NICKNAME",
+            "CHAT_USER", "CHAT_USERNAME", "CHAT_NICKNAME", "MESSAGE_USER", "MESSAGE_USERNAME",
+            "SENDER_NAME", "SENDER_ID", "FROM_USER", "FROM_USERNAME", "USER_NAME", "USERNAME", "USER"
+        ]),
+        _submitter_from_context_env()
+    )
     dynamic_channel = _env_first([
         "OPENCLAW_CHANNEL", "OPENCLAW_CHAT_CHANNEL", "OPENCLAW_REQUEST_CHANNEL", "OPENCLAW_PLATFORM", "OPENCLAW_SOURCE_CHANNEL",
         "REQUESTER_GROUP_VALUE", "REQUEST_CHANNEL", "CONVERSATION_CHANNEL", "SOURCE_PLATFORM",

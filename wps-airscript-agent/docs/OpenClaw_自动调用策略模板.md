@@ -32,8 +32,12 @@
    - 调用 create 前必须显式传入：
      - `submitter`（本次会话来源用户）
      - `submit_channel`（本次会话来源渠道，如 telegram/feishu/whatsapp/wecom）
+     - `_confirm_submit=true`（仅在用户已明确确认提交时传）
+   - submitter 优先取会话用户键：`OPENCLAW_SUBMITTER/OPENCLAW_USER/OPENCLAW_USERNAME`，缺失时从 `OPENCLAW_CONTEXT` 中的 `user/sender/requester` 提取
    - 禁止省略 `submit_channel`，否则会回落默认渠道并污染数据归因
    - 建议运行环境开启：`WPS_REQUIRE_SUBMIT_CHANNEL=true`
+   - 建议运行环境开启：`WPS_REQUIRE_SUBMITTER=true`
+   - 建议运行环境开启：`WPS_REQUIRE_CONFIRM_SUBMIT=true`
    - create 调用必须带：`_confirm_submit=true`
    - 建议运行环境开启：`WPS_REQUIRE_CONFIRM_SUBMIT=true`
 
