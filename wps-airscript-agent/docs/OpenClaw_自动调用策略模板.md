@@ -67,7 +67,7 @@
    - 调用 `delete`
    - 条件删除至少提供：
      - `WPS_DELETE_FIELD`
-     - `WPS_DELETE_VALUE`
+     - `WPS_DELETE_VALUE`（当 `WPS_DELETE_RULE` 为 `为空/不为空` 时可省略）
    - 撤销当次录入优先提供：
      - `WPS_DELETE_REQUEST_ID`
    - 调用 delete 时也必须带来源参数：

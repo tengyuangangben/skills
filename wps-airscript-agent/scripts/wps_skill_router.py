@@ -666,15 +666,21 @@ def delete_records(
     if not delete_webhook or "请替换" in str(delete_webhook):
         raise ValueError(f"{route.get('name')} 未配置 delete_webhook")
     ids = [str(x).strip() for x in (record_ids or []) if str(x).strip()]
-    if not ids and not request_id and not (delete_field_name and delete_field_value):
-        raise ValueError("删除需要提供 record_ids，或 request_id，或 delete_field_name + delete_field_value")
+    rule = str(delete_field_rule or "等于").strip()
+    field_name = str(delete_field_name or "").strip()
+    field_value = "" if delete_field_value is None else str(delete_field_value)
+    if rule == "等于" and field_name and field_value.strip() == "":
+        rule = "为空"
+    field_condition_ready = bool(field_name) and (field_value.strip() != "" or rule in ("为空", "不为空"))
+    if not ids and not request_id and not field_condition_ready:
+        raise ValueError("删除需要提供 record_ids，或 request_id，或有效字段条件（含 为空/不为空）")
     argv: Dict[str, Any] = {
         "sheet_name": route.get("sheet_name"),
         "table_type": "多维表",
         "request_type": "delete_record",
-        "delete_field_name": delete_field_name,
-        "delete_field_value": delete_field_value,
-        "delete_field_rule": delete_field_rule,
+        "delete_field_name": field_name,
+        "delete_field_value": field_value,
+        "delete_field_rule": rule,
         "query_conditions": query_conditions or [],
         "request_id": request_id,
         "request_id_field_name": route.get("request_id_field_name", "_请求ID"),

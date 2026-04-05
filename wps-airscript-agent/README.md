@@ -164,6 +164,16 @@ $env:WPS_DELETE_RULE="等于"
 python ".\scripts\wps_skill_router.py"
 ```
 
+空值删除示例：
+
+```powershell
+$env:WPS_SKILL_MODE="delete"
+$env:WPS_SKILL_INTENT="花名册"
+$env:WPS_DELETE_FIELD="客户姓名"
+$env:WPS_DELETE_RULE="为空"
+python ".\scripts\wps_skill_router.py"
+```
+
 ### 更新记录示例（修改字段内容）
 
 ```powershell
