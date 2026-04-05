@@ -34,6 +34,8 @@
      - `submit_channel`（本次会话来源渠道，如 telegram/feishu/whatsapp/wecom）
    - 禁止省略 `submit_channel`，否则会回落默认渠道并污染数据归因
    - 建议运行环境开启：`WPS_REQUIRE_SUBMIT_CHANNEL=true`
+   - create 调用必须带：`_confirm_submit=true`
+   - 建议运行环境开启：`WPS_REQUIRE_CONFIRM_SUBMIT=true`
 
 2. 用户意图为查询/统计：
    - 直接调用 query
@@ -100,7 +102,8 @@
    - 附件消息：追加到草稿附件数组（不覆盖）
    - 默认不识别附件内容，仅做直传参数收集（强制）
    - 禁止在用户未明确要求时主动进行 OCR/解析/摘要
-   - 仅当用户明确要求“识别附件内容/提取附件内容/OCR附件”时，才触发附件识别
+   - 仅当用户明确要求“识别附件内容/提取附件内容/OCR附件”时，才触发附件识别，并传 `_allow_attachment_ocr=true`
+   - 建议运行环境开启：`WPS_FORBID_ATTACHMENT_OCR_BY_DEFAULT=true`
    - 提交前检查用户是否明确确认“资料已完整”
    - 若表含附件字段，仍需检查附件字段是否已收齐；未收齐则继续提示补传
    - 每次收到新消息仅更新草稿，不调用 create

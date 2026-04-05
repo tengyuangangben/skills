@@ -147,6 +147,7 @@ OpenClaw 调用强制要求：
 - 建议启用强校验：
   - `WPS_REQUIRE_SUBMIT_CHANNEL=true`
   - 可选：`WPS_REQUIRE_SUBMITTER=true`
+  - `WPS_REQUIRE_CONFIRM_SUBMIT=true`
 
 可选覆盖最终兜底渠道：
 
@@ -259,6 +260,7 @@ python ".\scripts\wps_skill_router.py"
 2. 优先传 `file_path` 或 `file_url`。
 3. 仅在无法获取路径/链接时才传 `file_data`，且必须带 `file_name`。
 4. 默认不做附件内容识别（强制）；仅当用户明确提出“识别附件内容/提取附件内容/OCR附件”时才触发识别流程。
+5. 建议启用：`WPS_FORBID_ATTACHMENT_OCR_BY_DEFAULT=true`，未明确授权时拒绝OCR结果写入。
 
 推荐输出给 Skill 的附件参数模板：
 
@@ -305,6 +307,7 @@ python ".\scripts\wps_skill_router.py"
 
 - 只要用户进入录入场景，一律先进入草稿收集态，不立即写入
 - 每轮收集后都询问用户是否已提供完整；仅当用户回复“确认提交/提交/完成”才一次性写入
+- create 调用时显式传 `_confirm_submit=true`；未确认提交时不要调用 create
 - 这样可避免多轮消息导致字段遗漏、附件覆盖、误提交
 
 录入前预校验（已内置）：

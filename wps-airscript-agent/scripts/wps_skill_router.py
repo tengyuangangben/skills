@@ -547,6 +547,12 @@ def create_record(
     if not write_webhook or "请替换" in write_webhook:
         raise ValueError(f"{route.get('name')} 未配置 write_webhook")
     payload_data: Dict[str, Any] = dict(user_data or {})
+    confirm_submit = _parse_bool(payload_data.pop("_confirm_submit", False), False) or _parse_bool(os.getenv("WPS_CONFIRM_SUBMIT", "false"), False)
+    if _parse_bool(os.getenv("WPS_REQUIRE_CONFIRM_SUBMIT", "true"), True) and not confirm_submit:
+        raise ValueError("未确认提交。请在用户明确“确认提交/提交/完成”后重试，或传入 _confirm_submit=true。")
+    attachment_ocr_requested = _parse_bool(payload_data.pop("_allow_attachment_ocr", False), False) or _parse_bool(os.getenv("WPS_ALLOW_ATTACHMENT_OCR_REQUESTED", "false"), False)
+    if _parse_bool(os.getenv("WPS_FORBID_ATTACHMENT_OCR_BY_DEFAULT", "true"), True) and (not attachment_ocr_requested) and _has_attachment_recognition_payload(payload_data):
+        raise ValueError("检测到附件识别结果字段。默认禁止附件OCR内容写入；仅当用户明确要求时设置 _allow_attachment_ocr=true 或 WPS_ALLOW_ATTACHMENT_OCR_REQUESTED=true。")
     payload_allow_new_fields = _parse_bool(payload_data.pop("_allow_new_fields", False), False)
     payload_whitelist_raw = payload_data.pop("_new_fields_whitelist", [])
     payload_whitelist: List[str] = []
@@ -950,6 +956,24 @@ def _parse_bool(v: Any, default: bool = False) -> bool:
     if s in ("0", "false", "no", "n", "否"):
         return False
     return default
+
+
+def _has_attachment_recognition_payload(obj: Any) -> bool:
+    suspicious_keys = {
+        "ocr_text", "ocr", "recognized_text", "parsed_text", "extract_text", "extracted_text",
+        "summary", "analysis", "content_text", "text_content"
+    }
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            key = str(k).strip().lower()
+            if key in suspicious_keys:
+                return True
+            if _has_attachment_recognition_payload(v):
+                return True
+        return False
+    if isinstance(obj, list):
+        return any(_has_attachment_recognition_payload(x) for x in obj)
+    return False
 
 
 def _match_condition(value: Any, cond: Dict[str, Any]) -> bool:
