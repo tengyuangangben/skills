@@ -146,6 +146,28 @@ def _env_first(names: List[str]) -> str:
     return ""
 
 
+def _cfg_bool(mapping: Dict[str, Any], key: str, env_name: str, default: bool) -> bool:
+    cfg = (mapping or {}).get("config")
+    if isinstance(cfg, dict) and key in cfg:
+        return _parse_bool(cfg.get(key), default)
+    return _parse_bool(os.getenv(env_name, str(default).lower()), default)
+
+
+def _normalize_record_id_any(v: Any) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, (str, int, float, bool)):
+        return str(v).strip()
+    if isinstance(v, dict):
+        for k in ("id", "Id", "recordId", "record_id", "RecordId", "rid", "_id", "value", "text"):
+            if k in v:
+                out = _normalize_record_id_any(v.get(k))
+                if out:
+                    return out
+        return ""
+    return ""
+
+
 def _extract_submitter_from_context_obj(obj: Any) -> str:
     if not isinstance(obj, dict):
         return ""
@@ -626,10 +648,12 @@ def create_record(
         raise ValueError(f"{route.get('name')} 未配置 write_webhook")
     payload_data: Dict[str, Any] = dict(user_data or {})
     confirm_submit = _parse_bool(payload_data.pop("_confirm_submit", False), False) or _parse_bool(os.getenv("WPS_CONFIRM_SUBMIT", "false"), False)
-    if _parse_bool(os.getenv("WPS_REQUIRE_CONFIRM_SUBMIT", "true"), True) and not confirm_submit:
+    require_confirm_submit = _cfg_bool(mapping, "require_confirm_submit", "WPS_REQUIRE_CONFIRM_SUBMIT", True)
+    if require_confirm_submit and not confirm_submit:
         raise ValueError("未确认提交。请在用户明确“确认提交/提交/完成”后重试，或传入 _confirm_submit=true。")
     attachment_ocr_requested = _parse_bool(payload_data.pop("_allow_attachment_ocr", False), False) or _parse_bool(os.getenv("WPS_ALLOW_ATTACHMENT_OCR_REQUESTED", "false"), False)
-    if _parse_bool(os.getenv("WPS_FORBID_ATTACHMENT_OCR_BY_DEFAULT", "true"), True) and (not attachment_ocr_requested) and _has_attachment_recognition_payload(payload_data):
+    forbid_attachment_ocr_by_default = _cfg_bool(mapping, "forbid_attachment_ocr_by_default", "WPS_FORBID_ATTACHMENT_OCR_BY_DEFAULT", True)
+    if forbid_attachment_ocr_by_default and (not attachment_ocr_requested) and _has_attachment_recognition_payload(payload_data):
         raise ValueError("检测到附件识别结果字段。默认禁止附件OCR内容写入；仅当用户明确要求时设置 _allow_attachment_ocr=true 或 WPS_ALLOW_ATTACHMENT_OCR_REQUESTED=true。")
     payload_allow_new_fields = _parse_bool(payload_data.pop("_allow_new_fields", False), False)
     payload_whitelist_raw = payload_data.pop("_new_fields_whitelist", [])
@@ -661,9 +685,11 @@ def create_record(
         if key_items:
             fields[0] = key_items + [x for x in one_record if not (isinstance(x, dict) and x.get("field_name") == key_field)]
     actual_submitter, actual_submit_channel, submitter_source, submit_channel_source = _resolve_submit_meta(submitter, submit_channel, payload_data, route)
-    if _parse_bool(os.getenv("WPS_REQUIRE_SUBMIT_CHANNEL", "false"), False) and submit_channel_source in ("env_default", "fallback_default"):
+    require_submit_channel = _cfg_bool(mapping, "require_submit_channel", "WPS_REQUIRE_SUBMIT_CHANNEL", False)
+    require_submitter = _cfg_bool(mapping, "require_submitter", "WPS_REQUIRE_SUBMITTER", False)
+    if require_submit_channel and submit_channel_source in ("env_default", "fallback_default"):
         raise ValueError("缺少有效 submit_channel。请显式传入 submit_channel 或确保会话运行时渠道变量可用。")
-    if _parse_bool(os.getenv("WPS_REQUIRE_SUBMITTER", "false"), False) and submitter_source in ("env_default", "fallback_default"):
+    if require_submitter and submitter_source in ("env_default", "fallback_default"):
         raise ValueError("缺少有效 submitter。请显式传入 submitter 或确保会话运行时用户变量可用。")
     argv = {
         "sheet_name": route.get("sheet_name"),
@@ -688,7 +714,9 @@ def update_attachment_record(
     key_value: Any,
     attachment_field: str,
     attachment_value: Any,
-    merge_mode: str = "replace"
+    merge_mode: str = "replace",
+    submitter: str = "",
+    submit_channel: str = ""
 ) -> Dict[str, Any]:
     if not key_field:
         raise ValueError("缺少 WPS_UPDATE_KEY_FIELD")
@@ -716,7 +744,7 @@ def update_attachment_record(
     patch_data: Dict[str, Any] = {
         attachment_field: patch_value
     }
-    return create_record(intent, patch_data, overwrite_mode=True, key_field=key_field, key_value=key_value)
+    return create_record(intent, patch_data, submitter=submitter, submit_channel=submit_channel, overwrite_mode=True, key_field=key_field, key_value=key_value)
 
 
 def update_record_fields(
@@ -724,7 +752,9 @@ def update_record_fields(
     key_field: str,
     key_value: Any,
     update_data: Dict[str, Any],
-    must_exist: bool = True
+    must_exist: bool = True,
+    submitter: str = "",
+    submit_channel: str = ""
 ) -> Dict[str, Any]:
     if not key_field:
         raise ValueError("缺少 WPS_UPDATE_KEY_FIELD")
@@ -750,7 +780,7 @@ def update_record_fields(
         _, rows = _extract_result_rows(q)
         if not rows:
             raise ValueError(f"未找到待更新记录: {key_field}={key_value}")
-    return create_record(intent, patch, overwrite_mode=True, key_field=key_field, key_value=key_value)
+    return create_record(intent, patch, submitter=submitter, submit_channel=submit_channel, overwrite_mode=True, key_field=key_field, key_value=key_value)
 
 
 def delete_records(
@@ -769,7 +799,8 @@ def delete_records(
     delete_webhook = route.get("delete_webhook", "")
     if not delete_webhook or "请替换" in str(delete_webhook):
         raise ValueError(f"{route.get('name')} 未配置 delete_webhook")
-    ids = [str(x).strip() for x in (record_ids or []) if str(x).strip()]
+    ids = [_normalize_record_id_any(x) for x in (record_ids or [])]
+    ids = [x for x in ids if x]
     rule = str(delete_field_rule or "等于").strip()
     field_name = str(delete_field_name or "").strip()
     field_value = "" if delete_field_value is None else str(delete_field_value)
@@ -778,6 +809,27 @@ def delete_records(
     field_condition_ready = bool(field_name) and (field_value.strip() != "" or rule in ("为空", "不为空"))
     if not ids and not request_id and not field_condition_ready:
         raise ValueError("删除需要提供 record_ids，或 request_id，或有效字段条件（含 为空/不为空）")
+    if not ids and field_condition_ready:
+        q = query_records_enhanced(
+            intent=intent,
+            monitor_field_name=field_name,
+            monitor_content=field_value,
+            check_field_rule=rule,
+            return_mode="all_fields",
+            return_fields=[],
+            query_conditions=query_conditions or [],
+            aggregate={},
+            include_attachment_fields=False
+        )
+        q_ids, _ = _extract_result_rows(q)
+        ids = [_normalize_record_id_any(x) for x in q_ids]
+        ids = [x for x in ids if x]
+        if not ids:
+            return {
+                "status": "finished",
+                "error": "",
+                "data": {"result": {"respData": {"state": "success"}, "msg": "未匹配到可删除记录", "deleted_count": 0, "deleted_ids": []}}
+            }
     argv: Dict[str, Any] = {
         "sheet_name": route.get("sheet_name"),
         "table_type": "多维表",
@@ -785,7 +837,7 @@ def delete_records(
         "delete_field_name": field_name,
         "delete_field_value": field_value,
         "delete_field_rule": rule,
-        "query_conditions": query_conditions or [],
+        "query_conditions": [],
         "request_id": request_id,
         "request_id_field_name": route.get("request_id_field_name", "_请求ID"),
         "record_ids": ids,
@@ -1336,13 +1388,17 @@ if __name__ == "__main__":
             attachment_field = os.getenv("WPS_UPDATE_ATTACHMENT_FIELD", "")
             attachment_value = json.loads(os.getenv("WPS_UPDATE_ATTACHMENT", "{}"))
             merge_mode = os.getenv("WPS_UPDATE_ATTACHMENT_MODE", "replace")
-            print(json.dumps(update_attachment_record(demo_intent, key_field, key_value, attachment_field, attachment_value, merge_mode), ensure_ascii=False, indent=2))
+            submitter = os.getenv("WPS_UPDATE_SUBMITTER", os.getenv("WPS_SUBMITTER", ""))
+            submit_channel = os.getenv("WPS_UPDATE_SUBMIT_CHANNEL", os.getenv("WPS_SUBMIT_CHANNEL", ""))
+            print(json.dumps(update_attachment_record(demo_intent, key_field, key_value, attachment_field, attachment_value, merge_mode, submitter, submit_channel), ensure_ascii=False, indent=2))
         elif mode == "update":
             key_field = os.getenv("WPS_UPDATE_KEY_FIELD", "")
             key_value = os.getenv("WPS_UPDATE_KEY_VALUE", "")
             update_data = json.loads(os.getenv("WPS_UPDATE_FIELDS_JSON", "{}"))
             must_exist = _parse_bool(os.getenv("WPS_UPDATE_MUST_EXIST", "true"), True)
-            print(json.dumps(update_record_fields(demo_intent, key_field, key_value, update_data, must_exist), ensure_ascii=False, indent=2))
+            submitter = os.getenv("WPS_UPDATE_SUBMITTER", os.getenv("WPS_SUBMITTER", ""))
+            submit_channel = os.getenv("WPS_UPDATE_SUBMIT_CHANNEL", os.getenv("WPS_SUBMIT_CHANNEL", ""))
+            print(json.dumps(update_record_fields(demo_intent, key_field, key_value, update_data, must_exist, submitter, submit_channel), ensure_ascii=False, indent=2))
         elif mode == "delete":
             delete_field_name = os.getenv("WPS_DELETE_FIELD", "")
             delete_field_value = os.getenv("WPS_DELETE_VALUE", "")

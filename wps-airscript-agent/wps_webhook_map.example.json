@@ -1,5 +1,11 @@
 {
   "token": "可选：脚本令牌（优先于环境变量 WPS_AIRSCRIPT_TOKEN）",
+  "config": {
+    "require_submit_channel": true,
+    "require_submitter": true,
+    "require_confirm_submit": true,
+    "forbid_attachment_ocr_by_default": true
+  },
   "routes": [
     {
       "key": "reimbursement",

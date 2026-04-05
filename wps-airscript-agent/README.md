@@ -148,6 +148,14 @@ OpenClaw 调用强制要求：
   - `WPS_REQUIRE_SUBMIT_CHANNEL=true`
   - 建议同时开启：`WPS_REQUIRE_SUBMITTER=true`
   - `WPS_REQUIRE_CONFIRM_SUBMIT=true`
+  - `WPS_FORBID_ATTACHMENT_OCR_BY_DEFAULT=true`
+
+上述开关也可放到 `wps_webhook_map.json` 顶层 `config`：
+
+- `require_submit_channel`
+- `require_submitter`
+- `require_confirm_submit`
+- `forbid_attachment_ocr_by_default`
 
 可选覆盖最终兜底渠道：
 
