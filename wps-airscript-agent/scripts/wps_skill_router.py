@@ -11,7 +11,27 @@ import requests
 
 
 TOKEN_ENV = "WPS_AIRSCRIPT_TOKEN"
-MAP_ENV = "WPS_WEBHOOK_MAP_PATH"
+
+
+def _load_json_from_response(resp: requests.Response) -> Any:
+    raw = resp.content or b""
+    encodings: List[str] = []
+    if getattr(resp, "encoding", None):
+        encodings.append(str(resp.encoding))
+    for enc in ("utf-8", "utf-8-sig", "gb18030", "cp936"):
+        if enc not in encodings:
+            encodings.append(enc)
+    for enc in encodings:
+        try:
+            text = raw.decode(enc, errors="strict")
+            return json.loads(text)
+        except Exception:
+            continue
+    try:
+        return resp.json()
+    except Exception as e:
+        sample = (raw[:300] or b"").decode("utf-8", errors="replace")
+        raise ValueError(f"响应JSON解析失败: {e}; sample={sample}")
 DEFAULT_MAP_PATH = Path(__file__).with_name("wps_webhook_map.json")
 
 
@@ -264,7 +284,7 @@ def post_airscript(webhook: str, argv: Dict[str, Any], token: str) -> Dict[str, 
     if resp.status_code >= 400:
         detail = resp.text[:500] if resp.text else ""
         raise ValueError(f"调用失败 status={resp.status_code} webhook={webhook} detail={detail}")
-    return _compact_airscript_response(resp.json())
+    return _compact_airscript_response(_load_json_from_response(resp))
 
 
 def get_fields_config(route: Dict[str, Any], token: str) -> List[Dict[str, Any]]:
