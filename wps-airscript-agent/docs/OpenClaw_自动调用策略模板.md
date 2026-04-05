@@ -29,6 +29,10 @@
    - 一律进入“草稿收集态”（无论是否含附件）
    - 收集态下不立即写入，必须等待用户明确“确认提交/提交/完成”后才一次性 create
    - 每次收集后都要反问用户“是否已提供完整，如完整请回复确认提交”
+   - 调用 create 前必须显式传入：
+     - `submitter`（本次会话来源用户）
+     - `submit_channel`（本次会话来源渠道，如 telegram/feishu/whatsapp/wecom）
+   - 禁止省略 `submit_channel`，否则会回落默认渠道并污染数据归因
 
 2. 用户意图为查询/统计：
    - 直接调用 query
@@ -54,6 +58,9 @@
      - `WPS_UPDATE_FIELDS_JSON`
    - 默认要求记录必须存在：
      - `WPS_UPDATE_MUST_EXIST=true`
+   - 调用 update 时也必须带来源参数：
+     - `submitter`
+     - `submit_channel`
 
 5. 用户意图为“删除/撤销”：
    - 调用 `delete`
@@ -62,6 +69,9 @@
      - `WPS_DELETE_VALUE`
    - 撤销当次录入优先提供：
      - `WPS_DELETE_REQUEST_ID`
+   - 调用 delete 时也必须带来源参数：
+     - `submitter`
+     - `submit_channel`
 
 6. 路由不明确：
    - 先调用 setup 获取 routes

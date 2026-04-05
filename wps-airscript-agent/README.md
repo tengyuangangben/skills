@@ -140,6 +140,11 @@ $env:WPS_SUBMIT_CHANNEL="telegram"
 4. 兜底环境变量（`WPS_SUBMITTER` / `WPS_SUBMIT_CHANNEL`）
 5. 最终兜底（提交人=`agent`，提交渠道默认 `wecom`）
 
+OpenClaw 调用强制要求：
+
+- 每次 `create/update/update_attachment/delete` 都必须显式传 `submitter` 与 `submit_channel`。
+- 禁止省略 `submit_channel`，否则可能回落到默认渠道（`wecom`）。
+
 可选覆盖最终兜底渠道：
 
 - 环境变量：`WPS_FALLBACK_SUBMIT_CHANNEL`
