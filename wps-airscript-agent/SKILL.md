@@ -224,6 +224,27 @@ version: v2.0.0
   - 仅 `_请求ID`、`_提交人`、`_提交渠道` 允许自动创建
   - 仅当用户明确要求新增字段时，才允许开启 `WPS_ALLOW_NEW_FIELDS=true` 且 `WPS_ALLOW_NEW_FIELDS_REQUESTED=true`（必须配 `WPS_NEW_FIELDS_WHITELIST`）
 
+## OpenClaw 自动调用强规则（录入交互流程）
+- 新增/录入意图必须先 `fields`，再做字段匹配与补问，不得直接调用 `create`。
+- 进入录入场景后一律进入草稿收集态：
+  - 每次仅更新草稿，不写入。
+  - 每轮都反问“是否已完整，如完整请回复确认提交”。
+- 只有在用户明确回复 `确认提交/提交/完成/就这些/开始录入` 后才可调用 `create`，并必须传 `_confirm_submit=true`。
+- 调用 `create/update/update_attachment/delete` 时必须显式传：
+  - `submitter`
+  - `submit_channel`
+- 附件处理规则（强制）：
+  - 默认仅直传附件参数，不做 OCR/解析/摘要。
+  - 仅当用户明确要求“识别附件内容/提取附件内容/OCR附件”时，才允许识别，并传 `_allow_attachment_ocr=true`。
+- 低 token 规则（强制）：
+  - 禁止把 base64 大文本拼进对话上下文。
+  - 附件优先使用 `file_path` 或 `file_url`，仅在无法获取路径/链接时才传 `file_data`。
+- 建议运行环境或配置文件同时开启：
+  - `require_submit_channel=true`
+  - `require_submitter=true`
+  - `require_confirm_submit=true`
+  - `forbid_attachment_ocr_by_default=true`
+
 ## Troubleshooting
 - 返回“未匹配到业务路由”：
   - 检查 `routes.aliases/name/key` 是否覆盖用户表达。
