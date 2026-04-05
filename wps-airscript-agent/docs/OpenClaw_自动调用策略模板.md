@@ -33,6 +33,7 @@
      - `submitter`（本次会话来源用户）
      - `submit_channel`（本次会话来源渠道，如 telegram/feishu/whatsapp/wecom）
    - 禁止省略 `submit_channel`，否则会回落默认渠道并污染数据归因
+   - 建议运行环境开启：`WPS_REQUIRE_SUBMIT_CHANNEL=true`
 
 2. 用户意图为查询/统计：
    - 直接调用 query

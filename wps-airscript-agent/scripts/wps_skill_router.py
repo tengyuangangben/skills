@@ -124,7 +124,7 @@ def _resolve_webhook_map_path() -> Path:
     return candidates[0]
 
 
-def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[str, Any], route: Dict[str, Any]) -> Tuple[str, str]:
+def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[str, Any], route: Dict[str, Any]) -> Tuple[str, str, str, str]:
     payload = user_data or {}
     payload_submitter = _first_non_empty(
         payload.get("submitter"),
@@ -161,21 +161,37 @@ def _resolve_submit_meta(submitter: str, submit_channel: str, user_data: Dict[st
         route_default_channel,
         "wecom"
     )
-    actual_submitter = _first_non_empty(
-        submitter,
-        payload_submitter,
-        dynamic_submitter,
-        os.getenv("WPS_SUBMITTER", ""),
-        "agent"
-    )
-    actual_submit_channel = _first_non_empty(
-        submit_channel,
-        dynamic_channel,
-        payload_channel,
-        os.getenv("WPS_SUBMIT_CHANNEL", ""),
-        fallback_channel
-    )
-    return actual_submitter, actual_submit_channel
+    if submitter:
+        actual_submitter = submitter
+        submitter_source = "arg"
+    elif payload_submitter:
+        actual_submitter = payload_submitter
+        submitter_source = "payload"
+    elif dynamic_submitter:
+        actual_submitter = dynamic_submitter
+        submitter_source = "runtime"
+    elif os.getenv("WPS_SUBMITTER", ""):
+        actual_submitter = str(os.getenv("WPS_SUBMITTER", "")).strip()
+        submitter_source = "env_default"
+    else:
+        actual_submitter = "agent"
+        submitter_source = "fallback_default"
+    if submit_channel:
+        actual_submit_channel = submit_channel
+        submit_channel_source = "arg"
+    elif dynamic_channel:
+        actual_submit_channel = dynamic_channel
+        submit_channel_source = "runtime"
+    elif payload_channel:
+        actual_submit_channel = payload_channel
+        submit_channel_source = "payload"
+    elif os.getenv("WPS_SUBMIT_CHANNEL", ""):
+        actual_submit_channel = str(os.getenv("WPS_SUBMIT_CHANNEL", "")).strip()
+        submit_channel_source = "env_default"
+    else:
+        actual_submit_channel = fallback_channel
+        submit_channel_source = "fallback_default"
+    return actual_submitter, actual_submit_channel, submitter_source, submit_channel_source
 
 
 def load_webhook_map() -> Dict[str, Any]:
@@ -540,7 +556,11 @@ def create_record(
         key_items = [x for x in one_record if isinstance(x, dict) and x.get("field_name") == key_field]
         if key_items:
             fields[0] = key_items + [x for x in one_record if not (isinstance(x, dict) and x.get("field_name") == key_field)]
-    actual_submitter, actual_submit_channel = _resolve_submit_meta(submitter, submit_channel, payload_data, route)
+    actual_submitter, actual_submit_channel, submitter_source, submit_channel_source = _resolve_submit_meta(submitter, submit_channel, payload_data, route)
+    if _parse_bool(os.getenv("WPS_REQUIRE_SUBMIT_CHANNEL", "false"), False) and submit_channel_source in ("env_default", "fallback_default"):
+        raise ValueError("缺少有效 submit_channel。请显式传入 submit_channel 或确保会话运行时渠道变量可用。")
+    if _parse_bool(os.getenv("WPS_REQUIRE_SUBMITTER", "false"), False) and submitter_source in ("env_default", "fallback_default"):
+        raise ValueError("缺少有效 submitter。请显式传入 submitter 或确保会话运行时用户变量可用。")
     argv = {
         "sheet_name": route.get("sheet_name"),
         "table_type": "多维表",

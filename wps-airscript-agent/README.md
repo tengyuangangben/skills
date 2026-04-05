@@ -144,6 +144,9 @@ OpenClaw 调用强制要求：
 
 - 每次 `create/update/update_attachment/delete` 都必须显式传 `submitter` 与 `submit_channel`。
 - 禁止省略 `submit_channel`，否则可能回落到默认渠道（`wecom`）。
+- 建议启用强校验：
+  - `WPS_REQUIRE_SUBMIT_CHANNEL=true`
+  - 可选：`WPS_REQUIRE_SUBMITTER=true`
 
 可选覆盖最终兜底渠道：
 
